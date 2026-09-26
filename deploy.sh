@@ -16,5 +16,5 @@ if [ -z "$PI" ] || [ -z "$DIR" ]; then
   exit 1
 fi
 
-scp LineBoard.html server.py remote.html start-board.sh setup-pi.sh "$PI:$DIR/" || { echo "Copy failed - is the Pi on and on the same Wi-Fi?"; exit 1; }
+scp LineBoard.html server.py remote.html start-board.sh setup-pi.sh hide-cursor.sh "$PI:$DIR/" || { echo "Copy failed - is the Pi on and on the same Wi-Fi?"; exit 1; }
 echo "Copied to $PI:~/$DIR"

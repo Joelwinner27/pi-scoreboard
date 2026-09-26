@@ -76,6 +76,8 @@ After that the Pi runs itself:
 - A watchdog restarts the browser if the board stops checking in for 5 minutes.
 - Screen blanking is turned off.
 
+No mouse on the TV? `bash hide-cursor.sh` hides the desktop's pointer too (undo with `bash hide-cursor.sh off`).
+
 **Pushing updates from another computer:** create a `.deploy.env` file with your Pi's login:
 ```
 PI="username@192.168.1.50"
