@@ -52,6 +52,14 @@ Name=Line Board
 Exec=$DIR/start-board.sh
 X-GNOME-Autostart-enabled=true
 EOF
+# any older full-screen browser launcher would open a second browser on top
+for f in "$HOME/.config/autostart"/*.desktop; do
+  [ "$f" = "$HOME/.config/autostart/lineboard.desktop" ] && continue
+  if grep -q -- "--kiosk" "$f" 2>/dev/null; then
+    mv "$f" "$f.disabled"
+    echo "   turned off old kiosk launcher: $(basename "$f") (renamed to $(basename "$f").disabled)"
+  fi
+done
 
 echo "== Turning off screen blanking"
 if command -v raspi-config >/dev/null && sudo raspi-config nonint do_blanking 1 2>/dev/null; then
