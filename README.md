@@ -47,6 +47,7 @@ Shows real data from ESPN. Scores move on game days; the lines are there all wee
 - **`LineBoard.html`** is the whole board: one file of plain HTML, CSS and JavaScript, no build step or frameworks. It pulls scoreboards, game summaries and fantasy stats straight from ESPN, pages through games, and draws the field as SVG.
 - **`server.py`** serves the board and the remote, stores the remote's settings, and passes taps to the board. It uses only Python's standard library.
 - **`remote.html`** is the phone page.
+- **`setup-pi.sh`** / **`start-board.sh`** set up the Pi to run everything on its own.
 
 It's built to be left running:
 - ESPN drops odds once a game ends, so the board remembers each pregame line to settle spreads and totals.
@@ -64,12 +65,23 @@ python3 server.py
 ```
 Open `http://localhost:8080/` for the board; the remote's address and QR code appear on screen.
 
-**On a Raspberry Pi:** copy `LineBoard.html`, `server.py` and `remote.html` into a folder on the Pi, run `python3 server.py` there, open `http://localhost:8080/` in Chromium and press F11. To push updates from another computer, create a `.deploy.env` file with your Pi's login:
+**On a Raspberry Pi:** copy the files into a folder on the Pi, then run once:
+```
+bash setup-pi.sh
+sudo reboot
+```
+After that the Pi runs itself:
+- `server.py` runs as a background service: it starts at boot and restarts if it ever stops.
+- The board opens full screen at login (`start-board.sh`), with Chromium's background throttling turned off so it keeps updating.
+- A watchdog restarts the browser if the board stops checking in for 5 minutes.
+- Screen blanking is turned off.
+
+**Pushing updates from another computer:** create a `.deploy.env` file with your Pi's login:
 ```
 PI="username@192.168.1.50"
 DIR="Scorebug"
 ```
-then run `./deploy.sh`. The TV reloads itself when a new board arrives.
+then run `./deploy.sh`. The TV reloads itself when a new board arrives, and the server restarts itself when `server.py` changes.
 
 **Board options** (URL parameters, when not using the remote): `league=cfb|nfl`, `my=OSU,MICH`, `sec=20` (seconds per page), `cols=1`, `scope=today`, `sort=soon`, `top25=1`.
 

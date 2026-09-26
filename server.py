@@ -9,6 +9,8 @@ Standard library only — nothing to install.
     python3 server.py              # http://<pi-ip>:8080/        → TV board
                                    # http://<pi-ip>:8080/remote  → phone remote
 
+On the Pi, setup-pi.sh installs this as a service that starts at boot.
+
 The board shows a QR code for the remote for its first minute on screen
 (and any time "SHOW QR ON TV" is switched on from the remote).
 """
@@ -200,8 +202,26 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"error": "not found"}, 404)
 
 
+def exit_when_replaced():
+    """Running as the Pi service (LINEBOARD_AUTORESTART=1): when deploy.sh copies
+    a new server.py, exit so systemd starts the new version."""
+    me = os.path.abspath(__file__)
+    start = os.path.getmtime(me)
+    while True:
+        time.sleep(5)
+        try:
+            if os.path.getmtime(me) != start:
+                time.sleep(2)          # let the copy finish
+                print("server.py changed - restarting", flush=True)
+                os._exit(0)
+        except OSError:
+            pass
+
+
 if __name__ == "__main__":
     load_state()
+    if os.environ.get("LINEBOARD_AUTORESTART") == "1":
+        threading.Thread(target=exit_when_replaced, daemon=True).start()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Board:  http://localhost:{PORT}/")
     print(f"Remote: http://{lan_ip()}:{PORT}/remote")
