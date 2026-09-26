@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Sports Board</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #060606;
+  color: #fff;
+  font-family: 'Oswald', sans-serif;
+  min-height: 100vh;
+  padding: 6px 10px 36px;
+}
+
+.day-header {
+  color: #fff;
+  font-weight: bold;
+  font-size: 15px;
+  padding: 8px 2px 6px;
+  letter-spacing: 1px;
+  border-bottom: 1px solid #1c1c1c;
+  margin-bottom: 5px;
+}
+
+/* Single column */
+#board { display: flex; flex-direction: column; }
+
+.day-group { width: 100%; }
+.bug-list { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; }
+
+/* ── BASE BUG ─────────────────────── */
+.bug {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  min-height: 52px;
+  border: 1px solid #1e1e1e;
+  width: 100%;
+}
+
+/* Vertical league tag */
+.bug-league-tag {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #aaa;
+  padding: 3px 4px;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-right: 1px solid #1a1a1a;
+}
+
+/* Team half — background is team color */
+.bug-side {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 5px 10px;
+  gap: 8px;
+}
+
+.bug-side.home { flex-direction: row-reverse; }
+
+.bug-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.bug-rank {
+  font-size: 10px;
+  color: rgba(255,255,255,0.8);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.bug-name {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+  color: #fff;
+}
+
+.bug-rec {
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bug-score {
+  font-size: 32px;
+  font-weight: 900;
+  min-width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.score-loss { opacity: 0.55; }
+
+/* ── MIDDLE PANEL ─────────────────── */
+.bug-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 14px;
+  background: #0c0c0c;
+  border-left: 1px solid #222;
+  border-right: 1px solid #222;
+  flex-shrink: 0;
+  min-width: 90px;
+  gap: 2px;
+}
+
+.mid-period {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+.mid-clock {
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+}
+
+.mid-sub {
+  font-size: 10px;
+  color: #fff;
+  letter-spacing: .3px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mid-final {
+  color: #888;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.mid-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.mid-live  { color: #f44336; }
+
+.live-dot {
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #f44336;
+  margin-right: 3px;
+  animation: blink 1.1s infinite;
+  vertical-align: middle;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.1} }
+
+.mid-down {
+  font-size: 10px;
+  color: rgba(255,255,255,0.8);
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+
+/* ── BASEBALL EXTRAS ──────────────── */
+.bug-baseball { flex-wrap: wrap; }
+
+.bug-baseball .bug-row1 {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 52px;
+}
+
+.bug-baseball .bug-row2 {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 3px 10px 3px 30px;
+  background: #0a0a0a;
+  border-top: 1px solid #1a1a1a;
+  font-size: 10px;
+  color: #fff;
+  min-height: 22px;
+}
+.bug-baseball .bug-row2 b { color: #fff; font-weight: 700; }
+
+.bug-baseball .bug-mid {
+  flex-direction: row;
+  gap: 8px;
+  min-width: 160px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.bug-inning-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  gap: 1px;
+}
+.inning-arrow { font-size: 10px; }
+.inning-arrow.top    { color: #4caf50; }
+.inning-arrow.bottom { color: #aaa; }
+.inning-num { font-size: 15px; font-weight: 900; color: #fff; }
+
+.bug-count { font-size: 12px; color: #fff; white-space: nowrap; }
+
+.bug-outs { display: flex; gap: 3px; align-items: center; }
+.out-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1px solid #555;
+}
+.out-dot.on { background: #f5a623; border-color: #f5a623; }
+
+.bug-diamond { position: relative; width: 24px; height: 24px; flex-shrink: 0; }
+.base-sq {
+  position: absolute;
+  width: 9px; height: 9px;
+  transform: rotate(45deg);
+  border: 1px solid #3a3a3a;
+}
+.base-sq.on { background: #f5a623; border-color: #f5a623; }
+.base-2nd { top: 0;    left: 7px; }
+.base-3rd { top: 7px;  left: 0;   }
+.base-1st { top: 7px;  left: 15px;}
+
+/* ── NO DATA ──────────────────────── */
+.no-data {
+  color: #333; padding: 40px;
+  text-align: center; letter-spacing: 3px; font-size: 11px;
+}
+
+/* ── TICKER ───────────────────────── */
+.ticker {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 26px; background: #050505;
+  border-top: 1px solid #1e1e1e;
+  display: flex; align-items: center; overflow: hidden; z-index: 10;
+}
+.ticker-label {
+  background: #4caf50; color: #000;
+  font-weight: 900; font-size: 10px; letter-spacing: 2px;
+  padding: 0 10px; height: 100%;
+  display: flex; align-items: center; flex-shrink: 0;
+}
+.ticker-window { flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center; }
+.ticker-track {
+  display: flex; white-space: nowrap;
+  animation: scroll 280s linear infinite;
+}
+@keyframes scroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+.ticker-item { padding: 0 16px; font-size: 10px; color: #888; border-right: 1px solid #1a1a1a; }
+.ticker-item b { color: #fff; }
+.tl { color: #f44336; }
+.tf { color: #444; }
+</style>
+</head>
+<body>
+
+<div id="board"><div class="no-data">LOADING...</div></div>
+
+<div class="ticker">
+  <div class="ticker-label">LIVE</div>
+  <div class="ticker-window">
+    <div class="ticker-track" id="tickerTrack">
+      <span class="ticker-item">CONNECTING...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const LEAGUES = [
+  { key: 'nba',    path: 'basketball/nba',                      label: 'NBA'  },
+  { key: 'mlb',    path: 'baseball/mlb',                        label: 'MLB'  },
+  { key: 'nhl',    path: 'hockey/nhl',                          label: 'NHL'  },
+  { key: 'nfl',    path: 'football/nfl',                        label: 'NFL'  },
+  { key: 'ncaaf',  path: 'football/college-football',           label: 'CFB'  },
+  { key: 'ncaamb', path: 'basketball/mens-college-basketball',  label: 'CBB'  },
+  { key: 'ncaawb', path: 'basketball/womens-college-basketball',label: 'WCBB' },
+];
+
+let allGames = [];
+
+/* ── HELPERS ─────────────────────────────────────── */
+function isToday(date) {
+  const now   = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end   = new Date(today); end.setDate(today.getDate() + 1);
+  return date >= today && date < end;
+}
+
+function gameStatus(ev) {
+  const t = ev.status?.type?.name;
+  if (['STATUS_IN_PROGRESS','STATUS_HALFTIME','STATUS_END_PERIOD'].includes(t)) return 'live';
+  if (['STATUS_FINAL','STATUS_FINAL_OVERTIME','STATUS_POSTPONED'].includes(t))  return 'final';
+  return 'soon';
+}
+
+function gameDateLabel(ev) {
+  const d = new Date(ev.date);
+  return d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }).toUpperCase();
+}
+
+function getBroadcast(comp) {
+  if (comp.broadcast) return comp.broadcast;
+  return (comp.broadcasts || []).flatMap(b => b.names || []).slice(0,2).join(' / ');
+}
+
+function ordinal(n, type) {
+  if (type === 'baseball') return ['1ST','2ND','3RD','4TH','5TH','6TH','7TH','8TH','9TH'][n-1] || n+'TH';
+  const q = ['1ST','2ND','3RD','4TH'];
+  if (n <= 4) return q[n-1];
+  return n === 5 ? 'OT' : (n-4)+'OT';
+}
+
+function safeHex(c) {
+  if (!c) return null;
+  const h = c.replace('#','');
+  return /^[0-9a-fA-F]{6}$/.test(h) ? '#'+h : null;
+}
+
+/* darken a hex color so text stays readable */
+function darkenHex(hex, amount) {
+  if (!hex) return '#1a1a1a';
+  let r = parseInt(hex.slice(1,3),16);
+  let g = parseInt(hex.slice(3,5),16);
+  let b = parseInt(hex.slice(5,7),16);
+  r = Math.max(0, Math.floor(r * amount));
+  g = Math.max(0, Math.floor(g * amount));
+  b = Math.max(0, Math.floor(b * amount));
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
+function sportType(league) {
+  if (['NFL','CFB'].includes(league))        return 'football';
+  if (['MLB'].includes(league))              return 'baseball';
+  if (['NBA','CBB','WCBB'].includes(league)) return 'basketball';
+  if (['NHL'].includes(league))              return 'hockey';
+  return 'basketball';
+}
+
+function localTime(date) {
+  return date.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+}
+
+/* ── FETCH ───────────────────────────────────────── */
+async function fetchAll() {
+  const results = await Promise.all(LEAGUES.map(async s => {
+    try {
+      const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${s.path}/scoreboard`);
+      const d = await r.json();
+      return (d.events || []).map(ev => {
+        const comp = ev.competitions?.[0];
+        const home = comp?.competitors?.find(c => c.homeAway === 'home');
+        const away = comp?.competitors?.find(c => c.homeAway === 'away');
+        if (!home || !away) return null;
+        const date_ = new Date(ev.date);
+        if (!isToday(date_)) return null;
+        const sit = comp.situation || {};
+        const status = gameStatus(ev);
+        return {
+          league:      s.label,
+          status,
+          dateLabel:   gameDateLabel(ev),
+          date:        date_,
+          shortDetail: ev.status?.type?.shortDetail || '',
+          period:      ev.status?.period || 0,
+          clock:       ev.status?.displayClock || '',
+          away:        away.team?.abbreviation || 'AWAY',
+          home:        home.team?.abbreviation || 'HOME',
+          awayLogo:    away.team?.logo || '',
+          homeLogo:    home.team?.logo || '',
+          awayColor:    safeHex(away.team?.color),
+          homeColor:    safeHex(home.team?.color),
+          awayAltColor: safeHex(away.team?.alternateColor),
+          homeAltColor: safeHex(home.team?.alternateColor),
+          awayRecord:  away.records?.find(r => r.type==='total')?.summary || '',
+          homeRecord:  home.records?.find(r => r.type==='total')?.summary || '',
+          as:          away.score != null ? away.score : null,
+          hs:          home.score != null ? home.score : null,
+          awayRank:    away.curatedRank?.current || null,
+          homeRank:    home.curatedRank?.current || null,
+          broadcast:   getBroadcast(comp),
+          sit_down:    sit.down     || 0,
+          sit_dist:    sit.distance || 0,
+          sit_balls:   sit.balls    ?? null,
+          sit_strikes: sit.strikes  ?? null,
+          sit_outs:    sit.outs     ?? null,
+          sit_1st:     !!sit.onFirst,
+          sit_2nd:     !!sit.onSecond,
+          sit_3rd:     !!sit.onThird,
+          sit_batter:  sit.batter?.athlete?.shortName  || '',
+          sit_pitcher: sit.pitcher?.athlete?.shortName || '',
+          featuredAthletes: comp.status?.featuredAthletes || [],
+        };
+      }).filter(Boolean);
+    } catch(e) { return []; }
+  }));
+
+  allGames = results.flat().sort((a, b) => {
+    const o = { live:0, final:1, soon:2 };
+    if (o[a.status] !== o[b.status]) return o[a.status] - o[b.status];
+    return a.date - b.date;
+  });
+
+  render();
+  renderTicker();
+}
+
+/* ── SCORE WIN/LOSS CLASS ────────────────────────── */
+function scoreCls(g, side) {
+  if (g.as === null || g.hs === null || g.as === g.hs) return '';
+  const awWin = parseInt(g.as) > parseInt(g.hs);
+  if (side === 'away') return awWin ? '' : 'score-loss';
+  return awWin ? 'score-loss' : '';
+}
+
+/* ── SHARED SIDE HTML ────────────────────────────── */
+function sideHTML(g, side) {
+  const isAway  = side === 'away';
+  const logo    = isAway ? g.awayLogo    : g.homeLogo;
+  const color   = isAway ? g.awayColor   : g.homeColor;
+  const altColor= isAway ? g.awayAltColor: g.homeAltColor;
+  const rank    = isAway ? g.awayRank    : g.homeRank;
+  const name    = isAway ? g.away       : g.home;
+  const rec     = isAway ? g.awayRecord : g.homeRecord;
+  const score   = isAway ? g.as         : g.hs;
+  const sc      = scoreCls(g, side);
+
+  // Use darkened team color as background; fallback to dark grey
+  const bg = color ? darkenHex(color, 0.55) : '#1a1a1a';
+
+  const glow    = altColor || '#ffffff';
+  const logoTag = logo
+    ? `<img class="bug-logo" src="${logo}" style="filter:drop-shadow(0 0 0.75px ${glow}) drop-shadow(0 0 0.75px ${glow})" onerror="this.style.display='none'">`
+    : '';
+  const rankTag = rank && rank <= 25
+    ? `<span class="bug-rank">#${rank}</span>`
+    : '';
+
+  return `
+    <div class="bug-side ${side}" style="background:${bg}">
+      ${logoTag}
+      ${rankTag}
+      <span class="bug-name">${name}</span>
+      <span class="bug-rec">${rec}</span>
+      <span class="bug-score ${sc}">${score !== null ? score : ''}</span>
+    </div>`;
+}
+
+/* ── DOWN & DISTANCE ─────────────────────────────── */
+function downDistStr(g) {
+  const downs = ['','1ST','2ND','3RD','4TH'];
+  if (g.sit_down && g.sit_dist) return `${downs[g.sit_down]||g.sit_down} & ${g.sit_dist}`;
+  const m = g.shortDetail.match(/(\d+(?:st|nd|rd|th)\s*&\s*\d+)/i);
+  return m ? m[1].toUpperCase() : '';
+}
+
+/* ── INNING DIRECTION ────────────────────────────── */
+function inningDir(g) {
+  const sd = g.shortDetail.toLowerCase();
+  if (sd.startsWith('top')) return 'top';
+  if (sd.startsWith('bot')) return 'bot';
+  return '';
+}
+
+/* ════════════════════════════════════════════════════
+   FOOTBALL BUG
+   ════════════════════════════════════════════════════ */
+function footballBug(g) {
+  const dd = downDistStr(g);
+  let midHTML = '';
+  if (g.status === 'live') {
+    midHTML = `
+      <div class="mid-period mid-live"><span class="live-dot"></span>${ordinal(g.period,'football')}</div>
+      <div class="mid-clock">${g.clock}</div>
+      ${dd ? `<div class="mid-down">${dd}</div>` : ''}`;
+  } else if (g.status === 'final') {
+    const lbl = g.shortDetail.toLowerCase().includes('ot') ? 'F/OT' : 'FINAL';
+    midHTML = `<div class="mid-final">${lbl}</div>`;
+  } else {
+    midHTML = `
+      <div class="mid-time">${localTime(g.date)}</div>
+      ${g.broadcast ? `<div class="mid-sub">${g.broadcast}</div>` : ''}`;
+  }
+  return `<div class="bug bug-football">
+    <div class="bug-league-tag">${g.league}</div>
+    ${sideHTML(g,'away')}
+    <div class="bug-mid">${midHTML}</div>
+    ${sideHTML(g,'home')}
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   BASEBALL BUG
+   ════════════════════════════════════════════════════ */
+function baseballBug(g) {
+  const dir    = inningDir(g);
+  const inning = g.period ? ordinal(g.period, 'baseball') : '';
+  const outs   = g.sit_outs !== null
+    ? [0,1,2].map(i=>`<div class="out-dot ${i<g.sit_outs?'on':''}"></div>`).join('')
+    : '';
+  const count  = g.sit_balls !== null
+    ? `<span class="bug-count">${g.sit_balls}-${g.sit_strikes}</span>`
+    : '';
+  const b1=g.sit_1st?'on':'', b2=g.sit_2nd?'on':'', b3=g.sit_3rd?'on':'';
+  const diamond = `
+    <div class="bug-diamond">
+      <div class="base-sq base-2nd ${b2}"></div>
+      <div class="base-sq base-3rd ${b3}"></div>
+      <div class="base-sq base-1st ${b1}"></div>
+    </div>`;
+
+  let midHTML = '';
+  if (g.status === 'live') {
+    const arrow    = dir==='top'?'▲':dir==='bot'?'▼':'▸';
+    const arrowCls = dir==='top'?'top':'bottom';
+    midHTML = `
+      <div class="bug-inning-block">
+        <div class="inning-arrow ${arrowCls}">${arrow}</div>
+        <div class="inning-num">${inning}</div>
+      </div>
+      ${count}
+      <div class="bug-outs">${outs}</div>
+      ${diamond}`;
+  } else if (g.status === 'final') {
+    midHTML = `<div class="mid-final">FINAL</div>`;
+  } else {
+    midHTML = `
+      <div class="mid-time">${localTime(g.date)}</div>
+      ${g.broadcast ? `<div class="mid-sub">${g.broadcast}</div>` : ''}`;
+  }
+
+  const wp = g.featuredAthletes.find(a=>a.name==='winningPitcher');
+  const lp = g.featuredAthletes.find(a=>a.name==='losingPitcher');
+  const sv = g.featuredAthletes.find(a=>a.name==='savingPitcher');
+  let row2 = '';
+  if (g.status==='live' && g.sit_pitcher) {
+    row2 = `<span>P: <b>${g.sit_pitcher}</b></span>${g.sit_batter?`<span>AB: <b>${g.sit_batter}</b></span>`:''}`;
+  } else if (g.status==='final') {
+    if (wp) row2 += `<span>W: <b>${wp.athlete?.shortName||''}</b></span>`;
+    if (lp) row2 += `<span>L: <b>${lp.athlete?.shortName||''}</b></span>`;
+    if (sv) row2 += `<span>SV: <b>${sv.athlete?.shortName||''}</b></span>`;
+  } else if (g.broadcast) {
+    row2 = `<span>${g.broadcast}</span>`;
+  }
+
+  return `<div class="bug bug-baseball">
+    <div class="bug-row1">
+      <div class="bug-league-tag">${g.league}</div>
+      ${sideHTML(g,'away')}
+      <div class="bug-mid">${midHTML}</div>
+      ${sideHTML(g,'home')}
+    </div>
+    ${row2 ? `<div class="bug-row2">${row2}</div>` : ''}
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   BASKETBALL BUG
+   ════════════════════════════════════════════════════ */
+function basketballBug(g) {
+  let midHTML = '';
+  if (g.status === 'live') {
+    midHTML = `
+      <div class="mid-period mid-live"><span class="live-dot"></span>${ordinal(g.period,'basketball')}</div>
+      <div class="mid-clock">${g.clock}</div>`;
+  } else if (g.status === 'final') {
+    const lbl = g.shortDetail.toLowerCase().includes('ot') ? 'F/OT' : 'FINAL';
+    midHTML = `<div class="mid-final">${lbl}</div>`;
+  } else {
+    midHTML = `
+      <div class="mid-time">${localTime(g.date)}</div>
+      ${g.broadcast ? `<div class="mid-sub">${g.broadcast}</div>` : ''}`;
+  }
+  return `<div class="bug bug-basketball">
+    <div class="bug-league-tag">${g.league}</div>
+    ${sideHTML(g,'away')}
+    <div class="bug-mid">${midHTML}</div>
+    ${sideHTML(g,'home')}
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   HOCKEY BUG
+   ════════════════════════════════════════════════════ */
+function hockeyBug(g) {
+  let midHTML = '';
+  if (g.status === 'live') {
+    midHTML = `
+      <div class="mid-period mid-live"><span class="live-dot"></span>${ordinal(g.period,'basketball')} PER</div>
+      <div class="mid-clock">${g.clock}</div>`;
+  } else if (g.status === 'final') {
+    const sd  = g.shortDetail.toLowerCase();
+    const lbl = sd.includes('ot') ? 'F/OT' : sd.includes('so') ? 'F/SO' : 'FINAL';
+    midHTML = `<div class="mid-final">${lbl}</div>`;
+  } else {
+    midHTML = `
+      <div class="mid-time">${localTime(g.date)}</div>
+      ${g.broadcast ? `<div class="mid-sub">${g.broadcast}</div>` : ''}`;
+  }
+  return `<div class="bug bug-hockey">
+    <div class="bug-league-tag">${g.league}</div>
+    ${sideHTML(g,'away')}
+    <div class="bug-mid">${midHTML}</div>
+    ${sideHTML(g,'home')}
+  </div>`;
+}
+
+/* ── DISPATCH ─────────────────────────────────────── */
+function renderBug(g) {
+  const sport = sportType(g.league);
+  if (sport === 'football')   return footballBug(g);
+  if (sport === 'baseball')   return baseballBug(g);
+  if (sport === 'basketball') return basketballBug(g);
+  if (sport === 'hockey')     return hockeyBug(g);
+  return basketballBug(g);
+}
+
+/* ── MAIN RENDER ─────────────────────────────────── */
+function render() {
+  const groups = {}, groupOrder = [];
+  for (const g of allGames) {
+    if (!groups[g.dateLabel]) { groups[g.dateLabel] = []; groupOrder.push(g.dateLabel); }
+    groups[g.dateLabel].push(g);
+  }
+
+  if (!groupOrder.length) {
+    document.getElementById('board').innerHTML = '<div class="no-data">NO GAMES TODAY</div>';
+    return;
+  }
+
+  let html = '';
+  for (const label of groupOrder) {
+    html += `<div class="day-group">
+      <div class="day-header">${label}</div>
+      <div class="bug-list">`;
+    groups[label].forEach(g => { html += renderBug(g); });
+    html += `</div></div>`;
+  }
+  document.getElementById('board').innerHTML = html;
+}
+
+/* ── TICKER ──────────────────────────────────────── */
+function renderTicker() {
+  const items = allGames.map(g => {
+    const cls = g.status==='live' ? 'tl' : g.status==='final' ? 'tf' : '';
+    const dot = g.status==='live' ? '&#9679; ' : '';
+    const sc  = g.as !== null ? `${g.as}-${g.hs}` : localTime(g.date);
+    return `<span class="ticker-item">${dot}<b>${g.away} @ ${g.home}</b> <span class="${cls}">${sc}</span> <span style="color:#333">${g.league}</span></span>`;
+  });
+  const track = document.getElementById('tickerTrack');
+  track.innerHTML = items.length
+    ? [...items,...items].join('')
+    : '<span class="ticker-item">NO GAMES TODAY</span>';
+}
+
+fetchAll();
+setInterval(fetchAll, 30000);
+</script>
+</body>
+</html>

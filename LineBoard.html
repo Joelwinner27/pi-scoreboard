@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Line Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* Vegas Line Board theme — sizes are in vh, tuned so 1280×720 hits
+   title 46px / section 30px / rows 37px / detail 25.5px            */
+:root {
+  --bg:    #000000;
+  --mint:  #74F2A6;
+  --red:   #FF5C5C;
+  --white: #FFFFFF;
+  --row2:  #FFFFFF;   /* second-row text color */
+  --lose:  #7A8A86;
+  --gray:  #DCDCDC;
+  --div:   #0F3A33;
+  --glow:  0 0 6px rgba(116, 242, 166, .4);
+
+  --fs-title: 6.4vh;
+  --fs-sec:   4.2vh;
+  --fs-row:   5.1vh;
+  --fs-det:   3.55vh;
+  --cols: 2;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--mint);
+  font-family: 'VT323', 'Courier New', monospace;
+  text-transform: uppercase;
+  text-shadow: var(--glow);
+  display: flex;
+  flex-direction: column;
+  cursor: none;
+}
+
+/* CRT scanlines */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  background: repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0,0,0,.28) 2px, rgba(0,0,0,.28) 3px);
+}
+
+/* ── HEADER ───────────────────────── */
+.topline {
+  height: 2px; flex-shrink: 0;
+  margin: 1.4vh 1.6vw 0;
+  background: var(--mint);
+  box-shadow: 0 0 6px rgba(116, 242, 166, .6);
+}
+header {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 1.6vw;
+  line-height: 1.05;
+}
+.h-date  { font-size: var(--fs-sec); color: var(--gray); letter-spacing: .08em; white-space: nowrap; }
+.h-title, .ff-title { font-size: var(--fs-title); letter-spacing: .14em; white-space: nowrap; }
+.h-clock {
+  justify-self: end;
+  font-size: var(--fs-sec); color: var(--white); letter-spacing: .08em;
+  text-shadow: 0 0 6px rgba(255, 255, 255, .35);
+}
+
+/* ── BOARD ────────────────────────── */
+#board {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  column-gap: 3.2vw;
+  padding: 0 1.6vw;
+  overflow: hidden;
+}
+.col { min-width: 0; overflow: hidden; }
+
+.sec {
+  font-size: var(--fs-sec);
+  text-align: center;
+  letter-spacing: .35em;
+  padding: .8vh 0 .1vh;
+  line-height: 1;
+  border-bottom: 1px solid var(--div);
+  white-space: nowrap;
+}
+
+.game {
+  display: grid;
+  grid-template-columns: 2.2ch minmax(0, 1fr) 2.6ch 5ch 4.6ch 5.4ch;
+  grid-template-rows: auto auto auto;
+  column-gap: .9ch;
+  font-size: var(--fs-row);
+  line-height: 1;
+  padding: .5vh 0 .6vh;
+  border-bottom: 1px solid var(--div);
+}
+.game > span { white-space: nowrap; overflow: hidden; }
+
+.a  { grid-row: 1; }
+.h  { grid-row: 2; }
+.rk { grid-column: 1; font-size: var(--fs-det); color: var(--red); text-align: right; align-self: center;
+      text-shadow: 0 0 6px rgba(255, 92, 92, .4); }
+.nm { grid-column: 2; text-overflow: ellipsis; }
+.sc { grid-column: 3; text-align: right; color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.sp { grid-column: 4; text-align: right; }
+.ml { grid-column: 6; text-align: right; }
+.tot { grid-column: 5; grid-row: 1 / 3; align-self: center; text-align: right; }
+
+/* two-tone rows: away team in mint, home team in white */
+.nm.h, .sp.h, .ml.h { color: var(--row2); text-shadow: 0 0 6px rgba(255, 255, 255, .3); }
+
+.nm.my   { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.sc.lose { color: var(--lose); text-shadow: none; }
+.poss::after { content: ' \2022'; color: var(--white); }
+
+.det {
+  grid-row: 3;
+  grid-column: 2 / -1;
+  font-size: var(--fs-det);
+  color: var(--gray);
+  text-shadow: none;
+  padding-top: .1vh;
+  text-overflow: ellipsis;
+}
+.det .st   { color: var(--mint); text-shadow: var(--glow); }
+.det .live { color: var(--red);  text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
+.det .hot  { color: var(--red); }
+
+.no-data {
+  grid-column: 1 / -1;
+  align-self: center; justify-self: center;
+  font-size: var(--fs-sec); letter-spacing: .35em;
+}
+
+/* hidden twin of a board column, used to measure item heights for paging */
+#measure { position: absolute; visibility: hidden; left: -9999px; top: 0; }
+
+/* ── FOOTER ───────────────────────── */
+footer {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: .6vh 1.6vw 1vh;
+  border-top: 1px solid var(--div);
+  font-size: var(--fs-det);
+  color: var(--gray);
+  text-shadow: none;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+.f-mid   { color: var(--red); text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
+.f-right { justify-self: end; color: var(--mint); text-shadow: var(--glow); }
+
+/* ══ NFL FANTASY ═══════════════════ */
+#ff {
+  position: fixed; inset: 0; z-index: 45;
+  background: var(--bg);
+  display: none;
+  flex-direction: column;
+}
+#ff.open { display: flex; }
+.ff-main {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 3.2vw;
+  align-content: start;
+  padding: 0 1.6vw;
+  overflow: hidden;
+}
+.ff-col { min-width: 0; }
+
+/* leaders: one line per player */
+.ffr {
+  display: grid;
+  grid-template-columns: 1.6ch minmax(0, 1.15fr) 3.4ch minmax(0, 1.5fr) 4.4ch;
+  column-gap: .8ch;
+  align-items: baseline;
+  font-size: 3.7vh; line-height: 1.12;
+  border-bottom: 1px solid var(--div);
+}
+.ffr > span, .ffp > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ffr .rk  { font-size: 2.9vh; }
+.ffr .tm  { color: var(--gray); text-shadow: none; font-size: 3vh; }
+.ffr .ln  { color: var(--gray); text-shadow: none; font-size: 2.8vh; }
+.ffr .pts, .ffp .pts { text-align: right; color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.ffr .nm.my, .ffp .nm.my { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+
+/* my players: name line + detail line */
+.ffp {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) 5ch;
+  column-gap: .8ch;
+  font-size: var(--fs-row); line-height: 1;
+  padding: .6vh 0 .7vh;
+  border-bottom: 1px solid var(--div);
+}
+.ffp .pos { color: var(--red); font-size: var(--fs-det); align-self: center; text-shadow: 0 0 6px rgba(255, 92, 92, .4); }
+.ffp .sub { grid-column: 2 / -1; font-size: var(--fs-det); color: var(--gray); text-shadow: none; padding-top: .2vh; }
+.ffp .sub .live { color: var(--red); }
+.ffp.idle .pts { color: var(--lose); text-shadow: none; }
+
+/* ── REMOTE QR ────────────────────── */
+#qr {
+  position: fixed; right: 1.6vw; bottom: 7vh; z-index: 60;
+  display: none; flex-direction: column; align-items: center; gap: .8vh;
+  padding: 1.2vh;
+  background: #000;
+  border: 1px solid var(--mint);
+  box-shadow: 0 0 12px rgba(116, 242, 166, .35);
+}
+#qr.show { display: flex; }
+#qrCode img, #qrCode canvas { width: 20vh !important; height: 20vh !important; display: block; }
+.qr-cap { font-size: 2.8vh; text-align: center; line-height: 1.1; }
+.qr-cap span { color: var(--gray); text-shadow: none; font-size: 2.3vh; text-transform: none; }
+
+/* ── SELECTING A GAME ─────────────── */
+body.show-cursor { cursor: default; }
+body.show-cursor .game { cursor: pointer; }
+body.show-cursor .game:hover,
+.game.sel { background: rgba(116, 242, 166, .08); box-shadow: inset 3px 0 0 var(--mint); }
+
+/* ══ GAME DETAIL ════════════════════ */
+#detail {
+  position: fixed; inset: 0; z-index: 50;
+  background: var(--bg);
+  display: none;
+  flex-direction: column;
+}
+#detail.open { display: flex; }
+
+.d-status { display: flex; align-items: center; gap: 1.2vw; font-size: var(--fs-sec); white-space: nowrap; }
+.d-status .clk { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.badge {
+  background: var(--red); color: #000;
+  padding: 0 .7vw;
+  text-shadow: none;
+  box-shadow: 0 0 10px rgba(255, 92, 92, .6);
+  letter-spacing: .1em;
+}
+.d-right { justify-self: end; display: flex; gap: 1.6vw; font-size: var(--fs-sec); white-space: nowrap; }
+.d-right .net { color: var(--gray); text-shadow: none; }
+.d-right .clk { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+
+.d-main {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  justify-content: space-evenly;
+  padding: 0 1.6vw;
+}
+
+/* team blocks + middle panel */
+.d-teams { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 2vw; }
+.tb { display: flex; align-items: center; gap: 1.4vw; min-width: 0; }
+.tb.home { flex-direction: row-reverse; text-align: right; }
+.tb-logo { width: 13vh; height: 13vh; object-fit: contain; flex-shrink: 0; }
+.tb-info { flex: 1; min-width: 0; }
+.tb-name { font-size: 6vh; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb.home .tb-name { color: var(--row2); text-shadow: 0 0 6px rgba(255, 255, 255, .3); }
+.tb-rank { color: var(--red); font-size: 4.2vh; margin-right: .6ch; text-shadow: 0 0 6px rgba(255, 92, 92, .4); }
+.tb-rec {
+  display: flex; align-items: center; gap: 1vw;
+  margin-top: .8vh;
+  font-size: var(--fs-det); color: var(--gray); text-shadow: none;
+}
+.tb.home .tb-rec { justify-content: flex-end; }
+.ball-ico { width: 6vh; height: 3.6vh; filter: drop-shadow(0 0 4px rgba(255, 255, 255, .6)); }
+.tb-score {
+  font-size: 19vh; line-height: .8;
+  min-width: 2ch; text-align: center;
+  color: var(--white); text-shadow: 0 0 14px rgba(255, 255, 255, .45);
+}
+.tb-score.lose { color: var(--lose); text-shadow: none; }
+
+.d-mid { display: flex; flex-direction: column; align-items: center; gap: .5vh; text-align: center; white-space: nowrap; }
+.d-dd   { font-size: 7.5vh; line-height: 1; color: var(--white); text-shadow: 0 0 10px rgba(255, 255, 255, .4); }
+.d-spot { font-size: var(--fs-sec); }
+.d-rz   { font-size: var(--fs-sec); color: var(--red); text-shadow: 0 0 8px rgba(255, 92, 92, .6); letter-spacing: .2em; }
+.d-big  { font-size: 6vh; line-height: 1; color: var(--white); text-shadow: 0 0 10px rgba(255, 255, 255, .4); }
+.d-line { font-size: var(--fs-sec); }
+.d-line b { font-weight: normal; color: var(--white); }
+.d-src  { font-size: 2.8vh; color: var(--lose); text-shadow: none; letter-spacing: .12em; }
+.d-rule { width: 100%; height: 1px; background: var(--div); margin: .6vh 0; }
+
+/* field */
+.d-field { width: 100%; height: 22vh; display: block; }
+.d-last {
+  font-size: var(--fs-det); color: var(--gray); text-shadow: none;
+  text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.d-last span { color: var(--mint); text-shadow: var(--glow); }
+
+/* top performers */
+.d-leaders {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 2vw; row-gap: .6vh;
+  font-size: 3.9vh; line-height: 1.05;
+}
+.d-leaders > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ld-head { font-size: var(--fs-sec); letter-spacing: .3em; padding-bottom: .3vh; border-bottom: 1px solid var(--div); }
+.ld-title { text-align: center; }
+.ld-a { text-align: right; }
+.ld-h { text-align: left; color: var(--row2); text-shadow: 0 0 6px rgba(255, 255, 255, .3); }
+.ld-cat { text-align: center; color: var(--red); font-size: var(--fs-det); letter-spacing: .2em; align-self: center;
+          text-shadow: 0 0 6px rgba(255, 92, 92, .4); }
+.ld-stat { color: var(--gray); text-shadow: none; }
+.ld-wait { grid-column: 1 / -1; text-align: center; color: var(--lose); text-shadow: none; font-size: var(--fs-det); }
+</style>
+</head>
+<body>
+
+<div class="topline"></div>
+<header>
+  <div class="h-date" id="hdrDate"></div>
+  <div class="h-title"></div>
+  <div class="h-clock" id="clock"></div>
+</header>
+
+<div id="board"><div class="no-data">LOADING</div></div>
+<div id="measure"></div>
+
+<footer>
+  <div id="fLines">LINES: —</div>
+  <div class="f-mid" id="fMid"></div>
+  <div class="f-right" id="fPage"></div>
+</footer>
+
+<div id="qr">
+  <div id="qrCode"></div>
+  <div class="qr-cap">SCAN FOR REMOTE<br><span id="qrUrl"></span></div>
+</div>
+
+<!-- Full-screen game detail: opens on click / Enter, or with #game=<ESPN id> in the URL -->
+<div id="detail">
+  <div class="topline"></div>
+  <header>
+    <div class="d-status" id="dStatus"></div>
+    <div class="h-title"></div>
+    <div class="d-right"><span class="net" id="dNet"></span><span class="clk" id="dClock"></span></div>
+  </header>
+  <div class="d-main" id="dMain"></div>
+  <footer>
+    <div>◀ BACK: CLICK OR ESC</div>
+    <div class="f-mid" id="dMid"></div>
+    <div class="f-right">◀ ▶ OTHER GAMES</div>
+  </footer>
+</div>
+
+<!-- NFL fantasy screens: FANTASY LEADERS / MY PLAYERS (picked on the phone remote) -->
+<div id="ff">
+  <div class="topline"></div>
+  <header>
+    <div class="h-date" id="ffWeek"></div>
+    <div class="ff-title" id="ffTitle">FANTASY LEADERS</div>
+    <div class="h-clock" id="ffClock"></div>
+  </header>
+  <div class="ff-main" id="ffMain"></div>
+  <footer>
+    <div>SCORING: ESPN PPR</div>
+    <div class="f-mid" id="ffMid"></div>
+    <div class="f-right" id="ffUpd"></div>
+  </footer>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   CONFIG — URL params override these, e.g.
+   LineBoard.html?league=nfl&my=CLE&sec=20&cols=1
+   (with server.py running, the phone remote picks the league)
+   ════════════════════════════════════════════════════ */
+const LEAGUES = {
+  cfb: {
+    title:   'COLLEGE FOOTBALL',
+    path:    'football/college-football',
+    query:   'groups=80&limit=300',   // 80 = FBS
+    myTeams: ['OSU'],
+    fbsOnly: true,                     // drop games with an FCS team
+    ranks:   true,                     // AP rank in the red number column
+    nicknames: false,                  // "OHIO STATE" (school), not "BUCKEYES"
+  },
+  nfl: {
+    title:   'NFL',
+    path:    'football/nfl',
+    query:   '',
+    myTeams: [],
+    fbsOnly: false,
+    ranks:   false,
+    nicknames: true,                   // "PACKERS"
+  },
+};
+
+const P = new URLSearchParams(location.search);
+const LEAGUE = LEAGUES[P.get('league')] ? P.get('league') : 'cfb';
+const L = LEAGUES[LEAGUE];
+
+const CONFIG = {
+  path:           L.path,
+  query:          L.query,
+  myTeams:        L.myTeams, // ESPN abbreviations → "* MY TEAMS *" section
+  cols:           2,         // board columns
+  pageSeconds:    15,        // how long each page shows
+  refreshSeconds: 30,        // how often to pull scores
+  top25Only:      false,     // only games with a ranked team (CFB)
+  rolloverHour:   5,         // "today" runs until 5 AM so late West Coast games stay up
+  reloadHours:    6,         // full page reload to keep the Pi fresh
+};
+
+// ESPN conference ids that are FBS: ACC, Big 12, Big Ten, SEC, Pac-12, CUSA,
+// MAC, Mountain West, FBS Independents, Sun Belt, American
+const FBS_CONFS = new Set(['1', '4', '5', '8', '9', '12', '15', '17', '18', '37', '151']);
+
+const intParam = (k, d) => { const v = parseInt(P.get(k), 10); return isNaN(v) ? d : v; };
+CONFIG.cols        = intParam('cols', CONFIG.cols);
+CONFIG.pageSeconds = intParam('sec',  CONFIG.pageSeconds);
+if (P.get('top25') === '1') CONFIG.top25Only = true;
+if (P.has('my')) CONFIG.myTeams = P.get('my').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+
+const LINE_STORE = LEAGUE + 'Lines_v1';
+
+let games = [];
+let pages = [];
+let mode = 'today';        // 'today' or 'week' (no games today → show the week's slate)
+let weekNum = null;
+let provider = '';
+let lastOk = 0;
+let page = 0;
+let weekGames = [];        // every game in this week's feed (FBS only for CFB)
+let slate = [];            // this week's or today's games, before the view filter
+let seasonYear = new Date().getFullYear();
+let allById = {};          // every game in the feed, so the detail view can open any of them
+
+/* ── HELPERS ─────────────────────────────────────── */
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+function safeHex(c) {
+  if (!c) return null;
+  const h = c.replace('#', '');
+  return /^[0-9a-fA-F]{6}$/.test(h) ? '#' + h : null;
+}
+
+function dayKey(d) {
+  const x = new Date(d.getTime() - CONFIG.rolloverHour * 3600e3);
+  return `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`;
+}
+
+function localTime(d) {
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function periodLabel(n) {
+  if (n <= 4) return 'Q' + n;
+  return n === 5 ? 'OT' : (n - 4) + 'OT';
+}
+
+/* "+2.5" / "o50.5" / "-135" / 2.5 → number */
+function num(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') return v;
+  const s = String(v).trim().toLowerCase();
+  if (['pk', 'pick', 'even', 'ev'].includes(s)) return 0;
+  const n = parseFloat(s.replace(/^[ou]/, ''));
+  return isNaN(n) ? null : n;
+}
+
+/* 7.5 → 7½ (the Vegas way) */
+function half(v) {
+  const a = Math.abs(v), w = Math.floor(a), f = +(a - w).toFixed(2);
+  if (f === 0)  return String(w);
+  if (f === .5) return (w ? w : '') + '½';
+  return String(a);
+}
+const fmtSpread = v => v === 0 ? 'PK' : (v < 0 ? '-' : '+') + half(v);
+const fmtML     = v => v == null ? '' : Math.abs(v) === 100 ? 'EV' : v > 0 ? '+' + v : String(v);
+
+const isMine = t => CONFIG.myTeams.includes(t.abbr.toUpperCase());
+
+/* ── LINE MEMORY ─────────────────────────────────────
+   ESPN drops odds from the feed once a game goes final,
+   so remember each game's last pre-game line locally.   */
+let lineMemo = {};
+try { lineMemo = JSON.parse(localStorage.getItem(LINE_STORE)) || {}; } catch (e) {}
+
+function saveLines() {
+  const cutoff = Date.now() - 10 * 864e5;
+  for (const id in lineMemo) if (lineMemo[id].t < cutoff) delete lineMemo[id];
+  try { localStorage.setItem(LINE_STORE, JSON.stringify(lineMemo)); } catch (e) {}
+}
+
+function parseOdds(o, away, home) {
+  if (!o) return null;
+
+  // Spread, from the home team's point of view
+  let hs = num(o.pointSpread?.home?.close?.line);
+  if (hs == null && typeof o.details === 'string') {
+    const d = o.details.trim();
+    if (/^(even|pk|pick)/i.test(d)) hs = 0;
+    const m = d.match(/^(\S+)\s+([+-]?\d+(?:\.\d+)?)$/);
+    if (m) {
+      const v = parseFloat(m[2]);
+      if (m[1] === home.abbr) hs = v;
+      else if (m[1] === away.abbr) hs = -v;
+    }
+  }
+  if (hs == null && typeof o.spread === 'number') hs = o.spread;
+
+  const total = num(o.total?.over?.close?.line) ?? num(o.overUnder);
+  const hml   = num(o.moneyline?.home?.close?.odds) ?? num(o.homeTeamOdds?.moneyLine);
+  const aml   = num(o.moneyline?.away?.close?.odds) ?? num(o.awayTeamOdds?.moneyLine);
+
+  if (hs == null && total == null && hml == null && aml == null) return null;
+  return { hs, total, hml, aml, provider: o.provider?.displayName || o.provider?.name || '' };
+}
+
+/* ── PARSE ONE EVENT ─────────────────────────────── */
+function parseGame(ev) {
+  const comp = ev.competitions?.[0];
+  if (!comp) return null;
+  const H = comp.competitors?.find(c => c.homeAway === 'home');
+  const A = comp.competitors?.find(c => c.homeAway === 'away');
+  if (!H || !A) return null;
+
+  const st    = ev.status?.type || {};
+  const state = st.state || 'pre';
+  const sit   = comp.situation || {};
+
+  const team = c => {
+    const t = c.team || {};
+    const r = c.curatedRank?.current;
+    return {
+      id:     String(t.id ?? c.id ?? ''),
+      name:   ((L.nicknames ? t.name : t.shortDisplayName) || t.location || t.abbreviation || '').toUpperCase(),
+      abbr:   t.abbreviation || '',
+      conf:   String(t.conferenceId ?? ''),
+      rank:   L.ranks && r && r <= 25 ? r : null,
+      score:  state === 'pre' || c.score == null || c.score === '' ? null : Number(c.score),
+      logo:   t.logo || '',
+      color:  safeHex(t.color),
+      record: c.records?.find(x => x.type === 'total')?.summary || '',
+    };
+  };
+  const away = team(A), home = team(H);
+
+  let odds = parseOdds(comp.odds?.[0], away, home);
+  if (odds) lineMemo[ev.id] = { ...odds, t: Date.now() };
+  else if (lineMemo[ev.id]) odds = lineMemo[ev.id];
+
+  const broadcast = comp.broadcast
+    || (comp.broadcasts || []).flatMap(b => b.names || []).slice(0, 2).join('/');
+
+  const ballOn = (sit.possessionText || (sit.downDistanceText || '').split(/\s+at\s+/i)[1] || '').toUpperCase();
+  const spot = state === 'in' ? ballSpot(ev.id, ballOn, sit, away, home) : null;
+
+  return {
+    id: ev.id,
+    date: new Date(ev.date),
+    timeValid: comp.timeValid !== false,
+    state,
+    statusName: st.name || '',
+    period: ev.status?.period || 0,
+    clock: ev.status?.displayClock || '',
+    away, home, odds, broadcast,
+    poss: sit.possession ? String(sit.possession) : null,
+    downDist: (sit.downDistanceText || sit.shortDownDistanceText || '').toUpperCase(),
+    redZone: !!sit.isRedZone,
+    // for the detail view's field: "1ST & 10" and "MISS 25"
+    shortDD:  (sit.shortDownDistanceText || (sit.downDistanceText || '').split(/\s+at\s+/i)[0] || '').toUpperCase(),
+    ballOn,
+    spot,       // { los: 0-100 from the away goal line, offense: 'away'|'home', remembered }
+    distance: Number(sit.distance) || 0,
+    lastPlay: sit.lastPlay?.text || '',
+  };
+}
+
+/* ── BALL SPOT FOR THE FIELD ─────────────────────────
+   ESPN's live "situation" is patchy: no position text on kickoffs or at the end
+   of a quarter, and sometimes no possession for a refresh or two. Try, in order:
+   the "MISS 25" text, ESPN's yardLine number (yards from the HOME goal line),
+   then the last spot we saw in the past 5 minutes.                           */
+const spotMemo = {};
+
+function ballSpot(id, ballOn, sit, away, home) {
+  let los = null;
+  const m = ballOn.match(/^(.*?)\s*(\d{1,2})$/);
+  if (m) {
+    const n = +m[2], side = m[1].trim();
+    if (n === 50) los = 50;
+    else if (side === away.abbr) los = n;
+    else if (side === home.abbr) los = 100 - n;
+  }
+  if (los == null && typeof sit.yardLine === 'number' && sit.yardLine >= 0 && sit.yardLine <= 100) {
+    los = 100 - sit.yardLine;
+  }
+  const poss = sit.possession ? String(sit.possession) : null;
+  let offense = poss === away.id ? 'away' : poss === home.id ? 'home' : null;
+
+  const memo = spotMemo[id];
+  if (los != null && offense) {
+    spotMemo[id] = { los, offense, t: Date.now() };
+    return { los, offense, remembered: false };
+  }
+  if (memo && Date.now() - memo.t < 5 * 60e3) {
+    return { los: los ?? memo.los, offense: offense || memo.offense, remembered: los == null };
+  }
+  return null;
+}
+
+const hasPossession = (g, t) => g.spot ? g[g.spot.offense].id === t.id : g.poss === t.id;
+
+/* ── BET RESULTS ─────────────────────────────────── */
+function results(g) {
+  const o = g.odds;
+  if (!o || g.state === 'pre' || g.away.score == null || g.home.score == null) return {};
+  const r = {};
+  if (o.hs != null) {
+    const adj = g.home.score - g.away.score + o.hs;
+    r.ats = adj > 0 ? 'home' : adj < 0 ? 'away' : 'push';
+  }
+  if (o.total != null) {
+    const sum = g.home.score + g.away.score;
+    r.ou = sum > o.total ? 'over' : sum < o.total ? 'under' : 'push';
+  }
+  return r;
+}
+
+function isUpset(g) {
+  if (g.state !== 'post' || !g.odds || g.away.score === g.home.score) return false;
+  const homeWon = g.home.score > g.away.score;
+  const o = g.odds;
+  if (o.hml != null && o.aml != null) return homeWon ? o.hml >= 150 : o.aml >= 150;
+  if (o.hs != null) return homeWon ? o.hs >= 4.5 : o.hs <= -4.5;
+  return false;
+}
+
+/* ── FETCH ───────────────────────────────────────── */
+/* ── SAFEGUARDS ──────────────────────────────────────
+   Around midnight ESPN rolls its feed over to the next day/week and can
+   briefly send an empty or half-empty game list. Don't let that wipe the
+   board: ask for the current week explicitly, and if the feed still looks
+   wrong, keep the last good data for a while before believing it.        */
+const SUSPECT_GRACE_MS = 20 * 60e3;   // how long to distrust an empty/shrunken feed
+const BOARD_CACHE = LEAGUE + 'Board_v1';
+let seasonType = 2;
+let suspectSince = 0;
+
+async function fetchScoreboard(extra) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 15000);
+  try {
+    const q = [CONFIG.query, extra].filter(Boolean).join('&');
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${CONFIG.path}/scoreboard?${q}`,
+                          { signal: ctl.signal, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (!d || !Array.isArray(d.events)) throw new Error('bad scoreboard payload');
+    return d;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function refresh() {
+  try {
+    let d = await fetchScoreboard();
+
+    // Empty or much smaller than what we have? Ask for the week we're on by number.
+    const had = weekGames.length;
+    const looksWrong = x => x.events.length === 0 || (had >= 6 && x.events.length < had * 0.3);
+    if (looksWrong(d) && weekNum) {
+      try {
+        const d2 = await fetchScoreboard(`dates=${seasonYear}&seasontype=${seasonType}&week=${weekNum}`);
+        if (d2.events.length > d.events.length) d = d2;
+      } catch (e) { /* fall through to the grace check */ }
+    }
+    if (looksWrong(d) && had) {
+      if (!suspectSince) suspectSince = Date.now();
+      if (Date.now() - suspectSince < SUSPECT_GRACE_MS) {
+        throw new Error(`feed returned ${d.events.length} games (had ${had}) - keeping last good data`);
+      }
+    }
+    suspectSince = 0;
+
+    processScoreboard(d);
+    lastOk = Date.now();
+    saveBoardCache(d);
+    afterData();
+  } catch (e) {
+    // keep showing the last good data; footer flags it as delayed
+    console.warn('refresh failed', e);
+    updateChrome();
+  }
+}
+
+// Last good feed, so a reload during an outage comes back with games, not a blank board
+function saveBoardCache(d) {
+  const keep = new Set(weekGames.map(g => g.id));
+  try {
+    localStorage.setItem(BOARD_CACHE, JSON.stringify({
+      t: Date.now(), week: d.week, season: d.season, events: d.events.filter(ev => keep.has(ev.id)),
+    }));
+  } catch (e) { /* storage full or blocked - not critical */ }
+}
+
+function loadBoardCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(BOARD_CACHE));
+    if (!c || Date.now() - c.t > 36 * 3600e3 || !c.events?.length) return;
+    processScoreboard(c);
+    lastOk = c.t;   // footer says DATA DELAYED until a fresh pull lands
+    afterData();
+  } catch (e) {}
+}
+
+function afterData() {
+  applyView();
+  if (detailId) { renderDetail(); loadSummary(); }
+  if (view.screen !== 'games' && !ff.at) refreshFantasy();
+  else renderFantasy();
+}
+
+function processScoreboard(d) {
+  weekNum = d.week?.number ?? weekNum;
+  seasonYear = d.season?.year ?? seasonYear;
+  seasonType = d.season?.type ?? seasonType;
+  let all = (d.events || []).map(parseGame).filter(Boolean);
+  allById = Object.fromEntries(all.map(g => [g.id, g]));
+  saveLines();
+
+  // CFB: FBS vs FBS only (always keep my teams' games)
+  if (L.fbsOnly) all = all.filter(g =>
+    (FBS_CONFS.has(g.away.conf) && FBS_CONFS.has(g.home.conf)) || isMine(g.away) || isMine(g.home));
+
+  weekGames = all;
+  provider = all.find(g => g.odds?.provider)?.odds.provider || provider;
+}
+
+/* ── VIEW FILTER ─────────────────────────────────────
+   Chosen on the phone remote: all FBS, top 25, one conference, or hand-picked games. */
+const CONF_NAMES = {
+  '1': 'ACC', '4': 'BIG 12', '5': 'BIG TEN', '8': 'SEC', '9': 'PAC-12', '12': 'C-USA',
+  '15': 'MAC', '17': 'MOUNTAIN WEST', '18': 'INDEPENDENTS', '37': 'SUN BELT', '151': 'AMERICAN',
+};
+let view = { filter: CONFIG.top25Only ? 'top25' : 'all', conf: '', picks: [], paused: false, showQR: false,
+             screen: 'games', players: [],
+             scope: P.get('scope') === 'today' ? 'today' : 'week',    // today | week
+             sort: P.get('sort') === 'soon' ? 'soon' : 'default' };  // default (rank / kickoff slots) | soon
+
+function inView(g) {
+  const mine = isMine(g.away) || isMine(g.home);
+  switch (view.filter) {
+    case 'top25': return mine || !!(g.away.rank || g.home.rank);
+    case 'conf':  return g.away.conf === view.conf || g.home.conf === view.conf;
+    case 'picks': return view.picks.includes(g.id);
+    case 'live':  return g.state === 'in';
+    default:      return true;
+  }
+}
+
+function viewLabel() {
+  if (view.filter === 'top25') return 'TOP 25';
+  if (view.filter === 'conf')  return CONF_NAMES[view.conf] || 'CONFERENCE';
+  if (view.filter === 'picks') return 'MY PICKS';
+  if (view.filter === 'live')  return 'LIVE';
+  return '';
+}
+
+/* TODAY or THIS WEEK. "Today" with nothing on today falls back to the week's upcoming games. */
+function scopeSlate() {
+  if (view.scope === 'today') {
+    const today = dayKey(new Date());
+    const todays = weekGames.filter(g => dayKey(g.date) === today);
+    if (todays.length) { mode = 'today'; return todays; }
+    mode = 'week';
+    const upcoming = weekGames.filter(g => g.state !== 'post');
+    return upcoming.length ? upcoming : weekGames;
+  }
+  mode = 'week';
+  return weekGames;
+}
+
+function applyView() {
+  slate = scopeSlate();
+  games = slate.filter(inView);
+  render();
+  publishStatus();
+}
+
+/* ── SECTIONS ────────────────────────────────────────
+   * MY TEAMS * → TOP 25 (by best rank, #1 first) → rest of FBS by kickoff */
+const bestRank = g => Math.min(g.away.rank || 99, g.home.rank || 99);
+
+function buildItems() {
+  if (view.sort === 'soon') return buildSoonItems();
+  if (!L.ranks) return buildSlotItems();
+  const mine = [], ranked = [], rest = [];
+  for (const g of games) {
+    if (isMine(g.away) || isMine(g.home)) mine.push(g);
+    else if (bestRank(g) < 99) ranked.push(g);
+    else rest.push(g);
+  }
+  const byKick = (a, b) => (a.date - b.date) || a.id.localeCompare(b.id);
+  mine.sort(byKick);
+  ranked.sort((a, b) => (bestRank(a) - bestRank(b)) || byKick(a, b));
+  rest.sort(byKick);
+
+  const items = [];
+  const add = (title, list) => {
+    if (!list.length) return;
+    items.push({ type: 'sec', title });
+    list.forEach(g => items.push({ type: 'game', g }));
+  };
+  add('* MY TEAMS *', mine);
+  add('TOP 25', ranked);
+  const restTitle = view.filter === 'conf' ? viewLabel() : view.filter === 'picks' ? 'MY PICKS' : 'FBS';
+  add(ranked.length || mine.length ? (restTitle === 'FBS' ? 'MORE FBS' : restTitle) : restTitle, rest);
+  return items;
+}
+
+/* SOONEST: games in progress, then upcoming by kickoff, then finals (latest first) */
+function buildSoonItems() {
+  const items = [];
+  const add = (title, list) => {
+    if (!list.length) return;
+    items.push({ type: 'sec', title });
+    list.forEach(g => items.push({ type: 'game', g }));
+  };
+  add('LIVE',    games.filter(g => g.state === 'in').sort((a, b) => a.date - b.date));
+  add('UP NEXT', games.filter(g => g.state === 'pre').sort((a, b) => (a.date - b.date) || a.id.localeCompare(b.id)));
+  add('FINAL',   games.filter(g => g.state === 'post').sort((a, b) => b.date - a.date));
+  return items;
+}
+
+/* NFL: * MY TEAMS *, then one section per kickoff slot ("1:00 PM", "4:25 PM"...) */
+function buildSlotItems() {
+  const byKick = (a, b) => (a.date - b.date) || a.id.localeCompare(b.id);
+  const mine = games.filter(g => isMine(g.away) || isMine(g.home)).sort(byKick);
+  const rest = games.filter(g => !mine.includes(g)).sort(byKick);
+  const items = [];
+  if (mine.length) {
+    items.push({ type: 'sec', title: '* MY TEAMS *' });
+    mine.forEach(g => items.push({ type: 'game', g }));
+  }
+  let last = null;
+  for (const g of rest) {
+    let slot = g.timeValid ? localTime(g.date) : 'TBD';
+    if (mode === 'week') slot = g.date.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + slot;
+    if (slot !== last) { items.push({ type: 'sec', title: slot }); last = slot; }
+    items.push({ type: 'game', g });
+  }
+  return items;
+}
+
+/* ── DETAIL LINE ─────────────────────────────────── */
+function detailHTML(g) {
+  const bits = [];
+  let st;
+
+  if (g.state === 'in') {
+    if (g.statusName === 'STATUS_HALFTIME')        st = 'HALFTIME';
+    else if (g.statusName === 'STATUS_DELAYED')    st = 'DELAYED';
+    else if (g.statusName === 'STATUS_END_PERIOD') st = 'END ' + periodLabel(g.period);
+    else st = `${periodLabel(g.period)} ${esc(g.clock)}`;
+    if (g.downDist) bits.push(esc(g.downDist));
+    if (g.redZone) bits.push('<span class="hot">RED ZONE</span>');
+    else if (!g.downDist && g.broadcast) bits.push(esc(g.broadcast));
+    return `<span class="live">${st}</span>${bits.map(b => ' · ' + b).join('')}`;
+  }
+
+  if (g.state === 'post') {
+    if (g.statusName === 'STATUS_POSTPONED') return `<span class="st">POSTPONED</span>`;
+    if (g.statusName === 'STATUS_CANCELED')  return `<span class="st">CANCELED</span>`;
+    st = 'FINAL' + (g.period > 4 ? '/' + periodLabel(g.period) : '');
+    const res = results(g);
+    if (res.ats === 'push') bits.push('ATS PUSH');
+    else if (res.ats) bits.push(`${esc(g[res.ats].abbr)} COVERS`);
+    if (res.ou) bits.push(res.ou === 'push' ? 'TOTAL PUSH' : `${res.ou.toUpperCase()} ${half(g.odds.total)}`);
+    if (isUpset(g)) bits.push('<span class="hot">UPSET</span>');
+    return `<span class="st">${st}</span>${bits.map(b => ' · ' + b).join('')}`;
+  }
+
+  st = g.timeValid ? localTime(g.date) : 'TBD';
+  if (mode === 'week') st = g.date.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + st;
+  if (g.broadcast) bits.push(esc(g.broadcast));
+  return `<span class="st">${st}</span>${bits.map(b => ' · ' + b).join('')}`;
+}
+
+/* ── GAME + SECTION HTML ─────────────────────────── */
+function teamCells(g, side) {
+  const t = g[side], other = g[side === 'away' ? 'home' : 'away'];
+  const row = side === 'away' ? 'a' : 'h';
+  const o = g.odds;
+
+  const mine = isMine(t);
+  const hasBall = g.state === 'in' && hasPossession(g, t);
+  const lost = g.state === 'post' && t.score != null && other.score != null && t.score < other.score;
+
+  let sp = '';
+  if (o && o.hs != null) sp = fmtSpread(side === 'home' ? o.hs : -o.hs);
+  else if (g.state === 'pre' && side === 'away') sp = 'OFF';
+
+  const ml = o ? fmtML(side === 'home' ? o.hml : o.aml) : '';
+
+  return `
+    <span class="rk ${row}">${t.rank ?? ''}</span>
+    <span class="nm ${row}${mine ? ' my' : ''}${hasBall ? ' poss' : ''}">${mine ? '*' : ''}${esc(t.name)}</span>
+    <span class="sc ${row}${lost ? ' lose' : ''}">${t.score ?? ''}</span>
+    <span class="sp ${row}">${sp}</span>
+    <span class="ml ${row}">${ml}</span>`;
+}
+
+function itemHTML(it) {
+  if (it.type === 'sec') return `<div class="sec">${esc(it.title)}</div>`;
+  const g = it.g;
+  return `<div class="game" data-id="${esc(g.id)}">
+    ${teamCells(g, 'away')}
+    ${teamCells(g, 'home')}
+    <span class="tot">${g.odds?.total != null ? half(g.odds.total) : ''}</span>
+    <span class="det">${detailHTML(g)}</span>
+  </div>`;
+}
+
+/* ── PAGINATION ──────────────────────────────────────
+   Measure every item at real column width, then pour them into
+   columns/pages. Section headers never sit alone at the bottom of a
+   column, and a section that spills into a new column repeats its header. */
+function paginate(items) {
+  const board = document.getElementById('board');
+  const measure = document.getElementById('measure');
+  const colW = (board.clientWidth - parseFloat(getComputedStyle(board).paddingLeft) * 2
+               - parseFloat(getComputedStyle(board).columnGap) * (CONFIG.cols - 1)) / CONFIG.cols;
+  const capH = board.clientHeight;
+
+  measure.style.width = colW + 'px';
+  measure.innerHTML = items.map(itemHTML).join('');
+  const heights = [...measure.children].map(el => el.getBoundingClientRect().height);
+  measure.innerHTML = '';
+
+  const out = [];
+  let cols = [], col = [], used = 0, section = null, sectionH = 0;
+
+  const closeCol = () => {
+    cols.push(col);
+    if (cols.length === CONFIG.cols) { out.push(cols); cols = []; }
+    col = []; used = 0;
+  };
+
+  items.forEach((it, i) => {
+    const h = heights[i];
+    if (it.type === 'sec') {
+      section = it; sectionH = h;
+      const needed = h + (heights[i + 1] || 0);
+      if (col.length && used + needed > capH) closeCol();
+      col.push(it); used += h;
+    } else {
+      if (col.length && used + h > capH) {
+        closeCol();
+        if (section) { col.push(section); used += sectionH; }
+      }
+      col.push(it); used += h;
+    }
+  });
+  if (col.length) closeCol();
+  if (cols.length) out.push(cols);
+  return out;
+}
+
+/* ── RENDER ──────────────────────────────────────── */
+function render() {
+  document.documentElement.style.setProperty('--cols', CONFIG.cols);
+  pages = games.length ? paginate(buildItems()) : [];
+  if (page >= pages.length) page = 0;
+  drawPage();
+}
+
+function drawPage() {
+  const board = document.getElementById('board');
+  if (!pages.length) {
+    const empty = view.filter === 'picks' ? 'NO PICKED GAMES - USE THE REMOTE' : view.filter === 'all' ? (L.fbsOnly ? 'NO FBS GAMES SCHEDULED' : 'NO GAMES SCHEDULED') : 'NO ' + viewLabel() + ' GAMES';
+    board.innerHTML = `<div class="no-data">${lastOk ? empty : 'LOADING'}</div>`;
+  } else {
+    let html = '';
+    for (let c = 0; c < CONFIG.cols; c++) {
+      html += `<div class="col">${(pages[page][c] || []).map(itemHTML).join('')}</div>`;
+    }
+    board.innerHTML = html;
+  }
+  markSel();
+  updateChrome();
+  publishStatus();
+}
+
+function nextPage() {
+  if (pages.length < 2 || detailId || selId || view.paused || view.screen !== 'games') return;   // hold still while someone is picking or viewing something
+  page = (page + 1) % pages.length;
+  drawPage();
+}
+
+/* ── HEADER / FOOTER ─────────────────────────────── */
+function updateChrome() {
+  const now = new Date();
+  document.getElementById('clock').textContent = localTime(now);
+
+  const boardDay = new Date(now.getTime() - CONFIG.rolloverHour * 3600e3);
+  document.getElementById('hdrDate').textContent = mode === 'today'
+    ? boardDay.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '')
+    : (weekNum ? `WEEK ${weekNum}` : 'THIS WEEK');
+  if (viewLabel()) document.getElementById('hdrDate').textContent += ' · ' + viewLabel();
+
+  document.getElementById('fLines').textContent = `LINES: ${provider ? provider.toUpperCase() : '—'} PREGAME`;
+
+  const stale = lastOk && now - lastOk > (CONFIG.refreshSeconds * 2 + 30) * 1000;
+  const live = games.filter(g => g.state === 'in').length;
+  document.getElementById('fMid').textContent = stale ? '! DATA DELAYED !' : live ? `${live} LIVE` : '';
+
+  document.getElementById('fPage').textContent = pages.length > 1 ? `PAGE ${page + 1} OF ${pages.length} ▶` : '';
+
+  document.getElementById('dClock').textContent = localTime(now);
+  document.getElementById('ffClock').textContent = localTime(now);
+  document.getElementById('dMid').textContent = stale ? '! DATA DELAYED !' : '';
+}
+
+/* ════════════════════════════════════════════════════
+   GAME DETAIL VIEW
+   ════════════════════════════════════════════════════ */
+let detailId = null;
+let summary = null;        // ESPN summary feed for the open game (leaders)
+
+// Board order, so ◀ ▶ in the detail view steps through games the same way
+const boardOrder = () => pages.flat(2).filter(it => it.type === 'game').map(it => it.g.id);
+
+function openGame(id)  { location.hash = 'game=' + id; }
+function closeGame()   { history.replaceState(null, '', location.pathname + location.search); syncView(); }
+
+function syncView() {
+  const id = (location.hash.match(/game=(\d+)/) || [])[1] || null;
+  if (id !== detailId) { detailId = id; summary = null; }
+  document.getElementById('detail').classList.toggle('open', !!detailId);
+  if (detailId) { renderDetail(); loadSummary(); }
+  publishStatus();
+}
+
+async function loadSummary() {
+  const id = detailId;
+  if (!id) return;
+  try {
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${CONFIG.path}/summary?event=${id}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (id !== detailId) return;           // user moved on while this was loading
+    summary = d;
+    renderDetail();
+  } catch (e) { console.warn('summary failed', e); }
+}
+
+/* A small glowing football */
+const BALL_SVG = `<svg class="ball-ico" viewBox="0 0 60 36" aria-hidden="true">
+  <ellipse cx="30" cy="18" rx="27" ry="15" fill="#7a3d12" stroke="#fff" stroke-width="2"/>
+  <path d="M19 18h22M24 14v8M28 14v8M32 14v8M36 14v8" stroke="#fff" stroke-width="2"/></svg>`;
+
+function lum(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return (.299 * (n >> 16 & 255) + .587 * (n >> 8 & 255) + .114 * (n & 255)) / 255;
+}
+
+/* Horizontal field. x runs 0–100 from the away team's goal line (left)
+   to the home team's goal line (right).                                */
+function fieldSVG(g) {
+  const top = 18, bot = 150, mid = (top + bot) / 2;
+  const fx = yd => 100 + yd * 10;
+  let s = '';
+
+  s += `<rect x="100" y="${top}" width="1000" height="${bot - top}" fill="rgba(116,242,166,.04)"/>`;
+
+  // end zones in team colors
+  const ez = (x, t, rot) => {
+    const c = t.color || '#1a1a1a';
+    const label = t.name.length <= 8 ? t.name : t.abbr;   // must fit the end zone's height
+    return `<rect x="${x}" y="${top}" width="100" height="${bot - top}" fill="${c}"/>
+      <text x="${x + 50}" y="${mid}" style="transform-box: fill-box; transform-origin: center; transform: rotate(${rot}deg)" fill="${lum(c) > .6 ? '#000' : '#fff'}"
+        font-size="30" text-anchor="middle" dominant-baseline="central" letter-spacing="3">${esc(label)}</text>`;
+  };
+  s += ez(0, g.away, -90) + ez(1100, g.home, 90);
+
+  // yard lines, hash ticks, numbers
+  for (let yd = 1; yd < 100; yd++) {
+    const x = fx(yd);
+    if (yd % 5 === 0) {
+      const major = yd % 10 === 0;
+      s += `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="${major ? 'rgba(116,242,166,.55)' : '#0F3A33'}" stroke-width="${yd === 50 ? 3 : 2}"/>`;
+    } else {
+      s += `<line x1="${x}" y1="${top + 44}" x2="${x}" y2="${top + 50}" stroke="#0F3A33" stroke-width="2"/>
+            <line x1="${x}" y1="${bot - 50}" x2="${x}" y2="${bot - 44}" stroke="#0F3A33" stroke-width="2"/>`;
+    }
+  }
+  for (let yd = 10; yd <= 90; yd += 10) {
+    const n = yd <= 50 ? yd : 100 - yd;
+    s += `<text x="${fx(yd)}" y="${top + 26}" fill="#74F2A6" font-size="24" text-anchor="middle">${n}</text>
+          <text x="${fx(yd)}" y="${bot - 8}"  fill="#74F2A6" font-size="24" text-anchor="middle">${n}</text>`;
+  }
+  s += `<rect x="0" y="${top}" width="1200" height="${bot - top}" fill="none" stroke="#74F2A6" stroke-width="2"/>`;
+
+  // ball spot + offense, worked out in parseGame (with fallbacks)
+  if (g.spot) {
+    const { los, offense } = g.spot;
+    const dir = offense === 'away' ? 1 : -1;   // away drives right, home drives left
+    const isGoal = /GOAL/.test(g.shortDD);
+    const togo = g.spot.remembered ? 0 : isGoal ? (dir > 0 ? 100 - los : los) : g.distance;   // no first-down line on a remembered spot
+    const fd = Math.max(0, Math.min(100, los + dir * togo));
+
+    if (g.redZone) {
+      s += `<rect x="${dir > 0 ? fx(80) : fx(0)}" y="${top}" width="200" height="${bot - top}" fill="rgba(255,92,92,.16)"/>`;
+    }
+    if (togo > 0) {
+      s += `<line x1="${fx(fd)}" y1="${top}" x2="${fx(fd)}" y2="${bot}" stroke="rgba(255,214,10,.35)" stroke-width="12"/>
+            <line x1="${fx(fd)}" y1="${top}" x2="${fx(fd)}" y2="${bot}" stroke="#FFD60A" stroke-width="4"/>`;
+    }
+    s += `<line x1="${fx(los)}" y1="${top}" x2="${fx(los)}" y2="${bot}" stroke="rgba(77,163,255,.35)" stroke-width="12"/>
+          <line x1="${fx(los)}" y1="${top}" x2="${fx(los)}" y2="${bot}" stroke="#4DA3FF" stroke-width="4"/>`;
+
+    // offense logo riding the line of scrimmage, with a direction arrow
+    const t = g[offense];
+    const ax = fx(los) + dir * 40;
+    s += `<circle cx="${fx(los)}" cy="${mid}" r="27" fill="#000" stroke="#fff" stroke-width="2"/>`;
+    s += t.logo
+      ? `<image href="${esc(darkLogo(t))}" x="${fx(los) - 21}" y="${mid - 21}" width="42" height="42"/>`
+      : `<ellipse cx="${fx(los)}" cy="${mid}" rx="16" ry="10" fill="#7a3d12" stroke="#fff" stroke-width="2"/>`;
+    s += `<polygon points="${ax},${mid - 10} ${ax + dir * 16},${mid} ${ax},${mid + 10}" fill="#fff"/>`;
+  }
+
+  return `<svg class="d-field" viewBox="0 0 1200 160" font-family="VT323, monospace">${s}</svg>`;
+}
+
+// ESPN's logo variant made for dark backgrounds
+const darkLogo = t => t.logo.replace('/ncaa/500/', '/ncaa/500-dark/');
+
+function teamBlock(g, side) {
+  const t = g[side], other = g[side === 'away' ? 'home' : 'away'];
+  const hasBall = g.state === 'in' && hasPossession(g, t);
+  const lost = g.state === 'post' && t.score != null && other.score != null && t.score < other.score;
+  const logo = t.logo
+    ? `<img class="tb-logo" src="${esc(darkLogo(t))}" data-fb="${esc(t.logo)}"
+         onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=''}else{this.style.visibility='hidden'}">`
+    : '';
+  return `<div class="tb ${side}">
+    ${logo}
+    <div class="tb-info">
+      <div class="tb-name">${t.rank ? `<span class="tb-rank">#${t.rank}</span>` : ''}${isMine(t) ? '*' : ''}${esc(t.name)}</div>
+      <div class="tb-rec">${esc(t.record)}${hasBall ? BALL_SVG : ''}</div>
+    </div>
+    <div class="tb-score${lost ? ' lose' : ''}">${t.score ?? ''}</div>
+  </div>`;
+}
+
+function middlePanel(g) {
+  const o = g.odds;
+  let s = '';
+
+  if (g.state === 'in') {
+    if (g.shortDD) s += `<div class="d-dd">${esc(g.shortDD)}</div>`;
+    if (g.ballOn)  s += `<div class="d-spot">BALL ON ${esc(g.ballOn)}</div>`;
+    if (g.redZone) s += `<div class="d-rz">RED ZONE</div>`;
+    if (!g.shortDD && g.statusName === 'STATUS_HALFTIME') s += `<div class="d-big">HALFTIME</div>`;
+  } else if (g.state === 'pre') {
+    s += `<div class="d-big">${g.timeValid ? localTime(g.date) : 'TBD'}</div>`;
+    s += `<div class="d-spot">${g.date.toLocaleDateString('en-US', { weekday: 'long' })}</div>`;
+  } else {
+    const res = results(g);
+    const bits = [];
+    if (res.ats === 'push') bits.push('ATS PUSH');
+    else if (res.ats) bits.push(`${esc(g[res.ats].abbr)} COVERS`);
+    if (res.ou) bits.push(res.ou === 'push' ? 'TOTAL PUSH' : `${res.ou.toUpperCase()} ${half(o.total)}`);
+    s += `<div class="d-big">FINAL</div>`;
+    if (bits.length) s += `<div class="d-spot">${bits.join(' · ')}</div>`;
+    if (isUpset(g))  s += `<div class="d-rz">UPSET</div>`;
+  }
+
+  if (o && (o.hs != null || o.total != null)) {
+    if (s) s += `<div class="d-rule"></div>`;
+    if (o.hs != null) {
+      const fav = o.hs < 0 ? g.home : g.away;
+      s += `<div class="d-line">SPREAD <b>${o.hs === 0 ? 'PK' : esc(fav.abbr) + ' -' + half(o.hs)}</b></div>`;
+    }
+    if (o.total != null) s += `<div class="d-line">O/U <b>${half(o.total)}</b></div>`;
+    s += `<div class="d-src">${esc((o.provider || 'DRAFTKINGS').toUpperCase())} PREGAME</div>`;
+  }
+  return `<div class="d-mid">${s}</div>`;
+}
+
+function leadersHTML(g) {
+  const title = g.state === 'pre' ? 'SEASON LEADERS' : 'GAME LEADERS';
+  let html = `<div class="ld-head ld-a">${esc(g.away.abbr)}</div>
+              <div class="ld-head ld-title">${title}</div>
+              <div class="ld-head ld-h">${esc(g.home.abbr)}</div>`;
+  if (!summary) return html + `<div class="ld-wait">LOADING STATS...</div>`;
+
+  const byTeam = {};
+  for (const t of summary.leaders || []) byTeam[String(t.team?.id)] = t.leaders || [];
+  const cell = (team, cat, cls) => {
+    const l = (byTeam[team.id] || []).find(c => c.name === cat)?.leaders?.[0];
+    if (!l) return `<div class="${cls} ld-stat">—</div>`;
+    const name = esc((l.athlete?.shortName || l.athlete?.displayName || '').toUpperCase());
+    const stat = `<span class="ld-stat">${esc(l.displayValue || '')}</span>`;
+    return cls === 'ld-a' ? `<div class="ld-a">${stat} &nbsp;${name}</div>` : `<div class="ld-h">${name}&nbsp; ${stat}</div>`;
+  };
+  for (const [cat, label] of [['passingYards', 'PASSING'], ['rushingYards', 'RUSHING'], ['receivingYards', 'RECEIVING']]) {
+    html += cell(g.away, cat, 'ld-a') + `<div class="ld-cat">${label}</div>` + cell(g.home, cat, 'ld-h');
+  }
+  return html;
+}
+
+function renderDetail() {
+  const g = allById[detailId];
+  const main = document.getElementById('dMain');
+  if (!g) {
+    main.innerHTML = `<div class="no-data">${lastOk ? 'GAME NOT FOUND' : 'LOADING'}</div>`;
+    return;
+  }
+
+  // header: LIVE + clock / kickoff / FINAL, network on the right
+  let st;
+  if (g.state === 'in') {
+    const clk = g.statusName === 'STATUS_HALFTIME' ? 'HALFTIME'
+              : g.statusName === 'STATUS_END_PERIOD' ? 'END ' + periodLabel(g.period)
+              : `${periodLabel(g.period)} - ${esc(g.clock)}`;
+    st = `<span class="badge">LIVE</span><span class="clk">${clk}</span>`;
+  } else if (g.state === 'post') {
+    st = `<span class="clk">FINAL${g.period > 4 ? '/' + periodLabel(g.period) : ''}</span>`;
+  } else {
+    st = `<span class="clk">${g.timeValid ? localTime(g.date) : 'TBD'}</span>`;
+  }
+  document.getElementById('dStatus').innerHTML = st;
+  document.getElementById('dNet').textContent = g.broadcast || '';
+
+  let html = `<div class="d-teams">${teamBlock(g, 'away')}${middlePanel(g)}${teamBlock(g, 'home')}</div>`;
+  if (g.state === 'in') {
+    html += fieldSVG(g);
+    if (g.lastPlay) html += `<div class="d-last"><span>LAST PLAY:</span> ${esc(g.lastPlay)}</div>`;
+  }
+  html += `<div class="d-leaders">${leadersHTML(g)}</div>`;
+  main.innerHTML = html;
+}
+
+/* ── CONTROLS ────────────────────────────────────────
+   Mouse/touch: click a game to open, click anywhere to close.
+   Keyboard (or a TV remote that sends arrow keys):
+     board  → ↑↓ pick a game, ◀ ▶ change page, ENTER open
+     detail → ◀ ▶ previous/next game, ESC / BACKSPACE / ENTER close   */
+let selId = null, selTimer;
+
+function stepPage(dir) {
+  if (pages.length < 2) return false;
+  page = (page + dir + pages.length) % pages.length;
+  drawPage();
+  return true;
+}
+
+function stepGame(dir) {
+  const order = boardOrder();
+  const i = order.indexOf(detailId);
+  if (i >= 0 && order.length) openGame(order[(i + dir + order.length) % order.length]);
+}
+
+function markSel() {
+  document.querySelectorAll('.game.sel').forEach(el => el.classList.remove('sel'));
+  if (selId) document.querySelector(`.game[data-id="${selId}"]`)?.classList.add('sel');
+}
+function setSel(id) {
+  selId = id;
+  clearTimeout(selTimer);
+  selTimer = setTimeout(() => { selId = null; markSel(); }, 20000);   // resume auto-paging after 20s idle
+  markSel();
+}
+
+document.getElementById('board').addEventListener('click', e => {
+  const el = e.target.closest('.game');
+  if (el) openGame(el.dataset.id);
+});
+document.getElementById('detail').addEventListener('click', closeGame);
+
+addEventListener('keydown', e => {
+  if (!detailId && view.screen !== 'games' && ['Escape', 'Backspace'].includes(e.key)) {
+    view.screen = 'games';
+    showFantasy();
+    return;
+  }
+  const order = boardOrder();
+  if (detailId) {
+    if (['Escape', 'Backspace', 'Enter'].includes(e.key)) { e.preventDefault(); closeGame(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') stepGame(e.key === 'ArrowRight' ? 1 : -1);
+    return;
+  }
+  const onPage = (pages[page] || []).flat().filter(it => it.type === 'game').map(it => it.g.id);
+  if (!onPage.length) return;
+  const i = onPage.indexOf(selId);
+  if (e.key === 'ArrowDown') setSel(onPage[i < 0 ? 0 : Math.min(onPage.length - 1, i + 1)]);
+  else if (e.key === 'ArrowUp') setSel(onPage[i < 0 ? 0 : Math.max(0, i - 1)]);
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    if (stepPage(e.key === 'ArrowRight' ? 1 : -1)) {
+      const first = (pages[page] || []).flat().find(it => it.type === 'game');
+      if (first) setSel(first.g.id);
+    }
+  } else if (e.key === 'Enter') openGame(selId || onPage[0]);
+  else return;
+  e.preventDefault();
+});
+
+// Show the mouse pointer only while it's moving
+let cursorTimer;
+addEventListener('mousemove', () => {
+  document.body.classList.add('show-cursor');
+  clearTimeout(cursorTimer);
+  cursorTimer = setTimeout(() => document.body.classList.remove('show-cursor'), 3000);
+});
+
+addEventListener('hashchange', syncView);
+
+/* ════════════════════════════════════════════════════
+   NFL FANTASY (ESPN's public fantasy API, PPR scoring)
+   ════════════════════════════════════════════════════ */
+const FF_POS = { 1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K', 16: 'D/ST' };
+const FF_POS_TITLES = { QB: 'QUARTERBACKS', RB: 'RUNNING BACKS', WR: 'WIDE RECEIVERS', TE: 'TIGHT ENDS', K: 'KICKERS', 'D/ST': 'DEFENSE / ST' };
+// ESPN fantasy proTeamId → scoreboard abbreviation
+const FF_TEAMS = {
+  1: 'ATL', 2: 'BUF', 3: 'CHI', 4: 'CIN', 5: 'CLE', 6: 'DAL', 7: 'DEN', 8: 'DET', 9: 'GB', 10: 'TEN',
+  11: 'IND', 12: 'KC', 13: 'LV', 14: 'LAR', 15: 'MIA', 16: 'MIN', 17: 'NE', 18: 'NO', 19: 'NYG', 20: 'NYJ',
+  21: 'PHI', 22: 'ARI', 23: 'PIT', 24: 'LAC', 25: 'SF', 26: 'SEA', 27: 'TB', 28: 'WSH', 29: 'CAR', 30: 'JAX',
+  33: 'BAL', 34: 'HOU',
+};
+const ff = { leaders: null, leadersWeek: null, players: null, at: 0, err: '', timer: null };
+
+async function ffFetch(week, filter) {
+  const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${seasonYear}/segments/0/leaguedefaults/3`
+            + `?view=kona_player_info&scoringPeriodId=${week}`;
+  const r = await fetch(url, { headers: { 'X-Fantasy-Filter': JSON.stringify({ players: filter }) }, cache: 'no-store' });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return (await r.json()).players || [];
+}
+// only return the one week's actual stats (keeps the response ~5x smaller)
+const ffWeekOnly = week => ({
+  filterStatsForSourceIds: { value: [0] },
+  filterStatsForSplitTypeIds: { value: [1] },
+  filterStatsForCurrentSeasonScoringPeriodId: { value: [week] },
+});
+
+function ffLine(pos, st) {
+  const n = id => Math.round((st[id] || 0) * 10) / 10;
+  const out = [];
+  if (pos === 'QB') {
+    out.push(`${n(1)}/${n(0)}`, `${n(3)} YDS`);
+    if (n(4))  out.push(`${n(4)} TD`);
+    if (n(20)) out.push(`${n(20)} INT`);
+    if (n(24)) out.push(`${n(24)} RUSH` + (n(25) ? ` ${n(25)} TD` : ''));
+  } else if (pos === 'RB') {
+    out.push(`${n(23)} CAR`, `${n(24)} YDS`);
+    if (n(25)) out.push(`${n(25)} TD`);
+    if (n(53)) out.push(`${n(53)} REC ${n(42)} YDS` + (n(43) ? ` ${n(43)} TD` : ''));
+  } else if (pos === 'WR' || pos === 'TE') {
+    out.push(`${n(53)}/${n(58)} REC`, `${n(42)} YDS`);
+    if (n(43)) out.push(`${n(43)} TD`);
+  } else if (pos === 'K') {
+    out.push(`FG ${n(83)}/${n(84)}`, `XP ${n(86)}/${n(87)}`);
+  } else if (pos === 'D/ST') {
+    if (n(99)) out.push(`${n(99)} SACK`);
+    if (n(95)) out.push(`${n(95)} INT`);
+    if (n(96)) out.push(`${n(96)} FR`);
+    if (n(94)) out.push(`${n(94)} TD`);
+    out.push(`${n(120)} PA`);
+  }
+  return out.join(', ');
+}
+
+function ffPlayer(p, week) {
+  const pl = p.player || p;
+  const s = (pl.stats || []).find(x => x.scoringPeriodId === week && x.statSourceId === 0 && x.statSplitTypeId === 1);
+  const pos = FF_POS[pl.defaultPositionId] || '';
+  const name = pos === 'D/ST' || !pl.firstName ? pl.fullName : `${pl.firstName[0]}. ${pl.lastName}`;
+  return {
+    id: String(pl.id), pos, name: (name || '').toUpperCase(),
+    team: FF_TEAMS[pl.proTeamId] || 'FA',
+    pts: s ? s.appliedTotal : 0, played: !!s,
+    line: s ? ffLine(pos, s.stats || {}) : '',
+  };
+}
+
+/* Top 5 per position this week. ESPN can't sort by one week's points, so pull
+   the most-rostered players at each position and sort them here.
+   Before this week's first game, show last week's final numbers.           */
+async function loadLeaders() {
+  const groups = [{ slots: [0, 2, 4, 6], limit: 260 }, { slots: [17], limit: 40 }, { slots: [16], limit: 32 }];
+  const pull = async week => (await Promise.all(groups.map(g => ffFetch(week, {
+    filterSlotIds: { value: g.slots }, sortPercOwned: { sortAsc: false, sortPriority: 1 }, limit: g.limit, ...ffWeekOnly(week),
+  })))).flat().map(p => ffPlayer(p, week));
+
+  let week = weekNum;
+  let list = await pull(week);
+  if (!list.some(p => p.pts) && week > 1) { week -= 1; list = await pull(week); }
+  const out = {};
+  for (const pos of Object.keys(FF_POS_TITLES)) {
+    out[pos] = list.filter(p => p.pos === pos).sort((a, b) => b.pts - a.pts).slice(0, 5);
+  }
+  ff.leaders = out;
+  ff.leadersWeek = week;
+}
+
+async function loadPlayers() {
+  if (!view.players.length) { ff.players = []; return; }
+  const list = await ffFetch(weekNum, { filterIds: { value: view.players.map(Number) }, ...ffWeekOnly(weekNum) });
+  const byId = Object.fromEntries(list.map(p => { const x = ffPlayer(p, weekNum); return [x.id, x]; }));
+  ff.players = view.players.map(id => byId[id]).filter(Boolean);
+}
+
+// "@ MIA · Q3 8:42" for a player's team this week
+function teamGameText(abbr) {
+  const g = Object.values(allById).find(x => x.away.abbr === abbr || x.home.abbr === abbr);
+  if (!g) return { text: 'BYE', live: false, pre: false };
+  const opp = g.away.abbr === abbr ? '@ ' + g.home.abbr : 'VS ' + g.away.abbr;
+  return { text: `${opp} · ${statusText(g)}`, live: g.state === 'in', pre: g.state === 'pre' };
+}
+
+function renderFantasy() {
+  if (!document.getElementById('ff').classList.contains('open')) return;
+  const main = document.getElementById('ffMain');
+  const mine = new Set(view.players);
+  const leadersScreen = view.screen === 'fantasy';
+
+  document.getElementById('ffTitle').textContent = leadersScreen ? 'FANTASY LEADERS' : 'MY PLAYERS';
+  const wk = leadersScreen ? ff.leadersWeek : weekNum;
+  document.getElementById('ffWeek').textContent = wk ? `WEEK ${wk}${leadersScreen && wk < weekNum ? ' FINAL' : ''}` : '';
+  document.getElementById('ffUpd').textContent = ff.at ? 'UPDATED ' + localTime(new Date(ff.at)) : '';
+  document.getElementById('ffMid').textContent = '';
+
+  if (leadersScreen) {
+    if (!ff.leaders) { main.innerHTML = `<div class="no-data">${ff.err || 'LOADING'}</div>`; return; }
+    const col = list => list.map(pos => `<div class="sec">${FF_POS_TITLES[pos]}</div>` +
+      ff.leaders[pos].map((p, i) => `<div class="ffr">
+        <span class="rk">${i + 1}</span>
+        <span class="nm${mine.has(p.id) ? ' my' : ''}">${mine.has(p.id) ? '*' : ''}${esc(p.name)}</span>
+        <span class="tm">${esc(p.team)}</span>
+        <span class="ln">${esc(p.line)}</span>
+        <span class="pts">${p.pts.toFixed(1)}</span></div>`).join('')).join('');
+    main.innerHTML = `<div class="ff-col">${col(['QB', 'RB', 'WR'])}</div><div class="ff-col">${col(['TE', 'K', 'D/ST'])}</div>`;
+    return;
+  }
+
+  if (!ff.players) { main.innerHTML = `<div class="no-data">${ff.err || 'LOADING'}</div>`; return; }
+  if (!ff.players.length) { main.innerHTML = `<div class="no-data">ADD PLAYERS ON THE REMOTE</div>`; return; }
+  const row = p => {
+    const gm = teamGameText(p.team);
+    const bits = [`<span class="${gm.live ? 'live' : ''}">${esc(p.team)} ${esc(gm.text)}</span>`];
+    if (p.line) bits.push(esc(p.line));
+    return `<div class="ffp${gm.pre || gm.text === 'BYE' ? ' idle' : ''}">
+      <span class="pos">${esc(p.pos)}</span>
+      <span class="nm">${esc(p.name)}</span>
+      <span class="pts">${p.pts.toFixed(1)}</span>
+      <span class="sub">${bits.join(' · ')}</span></div>`;
+  };
+  const half1 = Math.ceil(ff.players.length / 2);
+  const [a, b] = ff.players.length > 8 ? [ff.players.slice(0, half1), ff.players.slice(half1)] : [ff.players, []];
+  main.innerHTML = `<div class="ff-col">${a.map(row).join('')}</div><div class="ff-col">${b.map(row).join('')}</div>`;
+  const total = ff.players.reduce((t, p) => t + p.pts, 0);
+  document.getElementById('ffMid').textContent = `TOTAL ${total.toFixed(1)} PTS`;
+}
+
+async function refreshFantasy() {
+  if (!document.getElementById('ff').classList.contains('open') || !weekNum) return;
+  renderFantasy();
+  try {
+    if (view.screen === 'fantasy') await loadLeaders(); else await loadPlayers();
+    ff.at = Date.now();
+    ff.err = '';
+  } catch (e) {
+    console.warn('fantasy failed', e);
+    ff.err = 'FANTASY DATA UNAVAILABLE';
+  }
+  renderFantasy();
+}
+
+function showFantasy() {
+  const on = LEAGUE === 'nfl' && view.screen !== 'games';
+  document.getElementById('ff').classList.toggle('open', on);
+  clearInterval(ff.timer);
+  ff.timer = null;
+  if (!on) return;
+  ff.players = null;
+  refreshFantasy();
+  ff.timer = setInterval(refreshFantasy, 90000);
+}
+
+/* ════════════════════════════════════════════════════
+   PHONE REMOTE LINK
+   Only active when the board is served by server.py (http://…);
+   opened as a plain file it runs standalone.
+   ════════════════════════════════════════════════════ */
+const REMOTE = { on: false, v: null, lastCmd: null, lastPost: 0, boardVersion: 0, timer: null };
+const bootAt = Date.now();
+
+async function pollRemote() {
+  try {
+    const r = await fetch('/api/state', { cache: 'no-store' });
+    // hosted somewhere without server.py (e.g. GitHub Pages): stop asking
+    if (r.status === 404 && !REMOTE.on) { clearInterval(REMOTE.timer); return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const s = await r.json();
+    if (!REMOTE.on) { REMOTE.on = true; initQR(); }
+
+    // a new LineBoard.html was copied onto the Pi → load it
+    if (s.boardVersion) {
+      if (REMOTE.boardVersion && s.boardVersion !== REMOTE.boardVersion) { location.reload(); return; }
+      REMOTE.boardVersion = s.boardVersion;
+    }
+
+    const cmds = s.cmds || [];
+    if (REMOTE.lastCmd == null) REMOTE.lastCmd = cmds.length ? cmds[cmds.length - 1].n : 0;   // don't replay old taps
+    for (const c of cmds) {
+      if (c.n <= REMOTE.lastCmd) continue;
+      REMOTE.lastCmd = c.n;
+      runCmd(c);
+    }
+
+    // the remote switched leagues → reload as the other board
+    if (s.league && s.league !== LEAGUE && LEAGUES[s.league]) {
+      const q = new URLSearchParams(location.search);
+      q.set('league', s.league);
+      location.replace(location.pathname + '?' + q.toString());
+      return;
+    }
+
+    if (s.v !== REMOTE.v) {
+      REMOTE.v = s.v;
+      const nv = (s.views || {})[LEAGUE] || {};
+      const changed = nv.filter !== view.filter || nv.conf !== view.conf
+        || (nv.scope || 'week') !== view.scope || (nv.sort || 'default') !== view.sort
+        || JSON.stringify(nv.picks) !== JSON.stringify(view.picks)
+        || (nv.myTeams && JSON.stringify(nv.myTeams) !== JSON.stringify(CONFIG.myTeams));
+      const screenChanged = (nv.screen || 'games') !== view.screen
+        || JSON.stringify(nv.players || []) !== JSON.stringify(view.players);
+      view = {
+        filter: nv.filter || 'all', conf: nv.conf || '', picks: nv.picks || [],
+        paused: !!nv.paused, showQR: !!nv.showQR,
+        scope: nv.scope === 'today' ? 'today' : 'week', sort: nv.sort === 'soon' ? 'soon' : 'default',
+        screen: LEAGUE === 'nfl' ? (nv.screen || 'games') : 'games', players: nv.players || [],
+      };
+      if (Array.isArray(nv.myTeams)) CONFIG.myTeams = nv.myTeams;
+      if (changed) { page = 0; applyView(); if (detailId) renderDetail(); }
+      if (screenChanged) showFantasy();
+      updateQR();
+    }
+    if (Date.now() - REMOTE.lastPost > 5000) publishStatus();   // heartbeat so the phone knows the TV is up
+  } catch (e) { /* no server: standalone mode */ }
+}
+
+function runCmd(c) {
+  if (c.action === 'open' && c.id) openGame(String(c.id));
+  else if (c.action === 'close') { if (detailId) closeGame(); }
+  else if (c.action === 'next' || c.action === 'prev') {
+    const dir = c.action === 'next' ? 1 : -1;
+    if (detailId) stepGame(dir); else stepPage(dir);
+  }
+}
+
+function statusText(g) {
+  if (g.state === 'in') {
+    if (g.statusName === 'STATUS_HALFTIME') return 'HALFTIME';
+    if (g.statusName === 'STATUS_END_PERIOD') return 'END ' + periodLabel(g.period);
+    return `${periodLabel(g.period)} ${g.clock}`;
+  }
+  if (g.state === 'post') return 'FINAL' + (g.period > 4 ? '/' + periodLabel(g.period) : '');
+  const t = g.timeValid ? localTime(g.date) : 'TBD';
+  return mode === 'week' ? g.date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase() + ' ' + t : t;
+}
+
+function publishStatus() {
+  if (!REMOTE.on) return;
+  REMOTE.lastPost = Date.now();
+  const teamInfo = t => ({ abbr: t.abbr, name: t.name, rank: t.rank, score: t.score, conf: t.conf });
+  const payload = {
+    league: LEAGUE, season: seasonYear, week: weekNum,
+    page, pages: pages.length, game: detailId, view, myTeams: CONFIG.myTeams,
+    confs: [...new Set(slate.flatMap(g => [g.away.conf, g.home.conf]))]
+      .filter(c => CONF_NAMES[c]).map(c => ({ id: c, name: CONF_NAMES[c] })),
+    games: slate.map(g => {
+      const o = g.odds;
+      let line = '';
+      if (o?.hs != null) line = o.hs === 0 ? 'PK' : `${(o.hs < 0 ? g.home : g.away).abbr} -${half(o.hs)}`;
+      if (o?.total != null) line += (line ? ' · ' : '') + 'O/U ' + half(o.total);
+      return {
+        id: g.id, state: g.state, t: g.date.getTime(), status: statusText(g), line,
+        broadcast: g.broadcast, away: teamInfo(g.away), home: teamInfo(g.home),
+        mine: isMine(g.away) || isMine(g.home), onBoard: inView(g),
+      };
+    }),
+  };
+  fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    .catch(() => {});
+}
+
+/* QR code in the corner: first minute after start-up, or while "SHOW QR" is on */
+let qrMade = false;
+async function initQR() {
+  try {
+    const info = await (await fetch('/api/info', { cache: 'no-store' })).json();
+    document.getElementById('qrUrl').textContent = info.remoteUrl.replace(/^https?:\/\//, '');
+    if (window.QRCode) {
+      new QRCode(document.getElementById('qrCode'), {
+        text: info.remoteUrl, width: 256, height: 256,
+        colorDark: '#000000', colorLight: '#74F2A6', correctLevel: QRCode.CorrectLevel.M,
+      });
+    }
+    qrMade = true;
+    updateQR();
+  } catch (e) {}
+}
+function updateQR() {
+  const show = qrMade && (view.showQR || Date.now() - bootAt < 60000);
+  document.getElementById('qr').classList.toggle('show', show);
+}
+
+/* ── BOOT ────────────────────────────────────────── */
+document.querySelectorAll('.h-title').forEach(el => { el.textContent = L.title; });
+if (LEAGUE === 'nfl' && ['fantasy', 'players'].includes(P.get('screen'))) { view.screen = P.get('screen'); showFantasy(); }
+document.title = L.title + ' Line Board';
+let resizeTimer;
+addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 200); });
+// re-measure once the VT323 font arrives, since it changes row heights
+document.fonts?.ready.then(() => { if (games.length) render(); });
+
+syncView();
+loadBoardCache();
+refresh();
+setInterval(refresh, CONFIG.refreshSeconds * 1000);
+setInterval(nextPage, CONFIG.pageSeconds * 1000);
+setInterval(updateChrome, 1000);
+if (location.protocol.startsWith('http')) {
+  REMOTE.timer = setInterval(pollRemote, 1500);
+  pollRemote();
+  setInterval(updateQR, 5000);
+}
+// Periodic reload keeps the Pi's browser fresh - but never while the data feed is down
+function scheduledReload() {
+  if (lastOk && Date.now() - lastOk < 2 * 60e3) location.reload();
+  else setTimeout(scheduledReload, 5 * 60e3);
+}
+setTimeout(scheduledReload, CONFIG.reloadHours * 3600e3);
+</script>
+</body>
+</html>

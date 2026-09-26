@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Line Remote">
+<meta name="theme-color" content="#000000">
+<title>Line Remote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:    #000000;
+  --mint:  #74F2A6;
+  --red:   #FF5C5C;
+  --white: #FFFFFF;
+  --lose:  #7A8A86;
+  --gray:  #DCDCDC;
+  --div:   #0F3A33;
+  --glow:  0 0 6px rgba(116, 242, 166, .4);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--mint);
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 22px;
+  text-transform: uppercase;
+  text-shadow: var(--glow);
+  padding: 0 16px calc(24px + env(safe-area-inset-bottom));
+  overflow-x: hidden;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* top bar */
+.top {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top)) 0 8px;
+  border-bottom: 2px solid var(--mint);
+  box-shadow: 0 4px 0 #000;
+}
+.top h1 { font-size: 34px; font-weight: normal; letter-spacing: .14em; }
+.conn { font-size: 18px; color: var(--lose); text-shadow: none; }
+.conn.on { color: var(--mint); text-shadow: var(--glow); }
+
+h2 {
+  font-size: 22px; font-weight: normal;
+  text-align: center; letter-spacing: .35em;
+  margin: 22px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--div);
+}
+
+button {
+  font: inherit; text-transform: inherit;
+  color: var(--mint); text-shadow: var(--glow);
+  background: #000;
+  border: 1px solid var(--mint);
+  min-height: 48px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+button:active, button.flash { background: rgba(116, 242, 166, .25); }
+button.on { background: var(--mint); color: #000; text-shadow: none; }
+button:disabled { opacity: .35; }
+
+.hidden { display: none !important; }
+
+/* segmented button rows */
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+.seg button { font-size: 18px; padding: 6px 2px; white-space: nowrap; overflow: hidden; }
+.seg.league { margin-top: 12px; }
+.seg.league button { font-size: 24px; letter-spacing: .1em; }
+
+/* now on TV */
+.now { text-align: center; margin-top: 12px; }
+.now-what { font-size: 26px; color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); min-height: 30px; }
+.now-sub  { font-size: 18px; color: var(--gray); text-shadow: none; }
+.ctrl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; margin-top: 10px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chips button { font-size: 18px; min-height: 40px; }
+.hint { font-size: 18px; color: var(--gray); text-shadow: none; text-align: center; margin-top: 8px; }
+.hint button { min-height: 32px; font-size: 16px; padding: 0 8px; margin-left: 8px; }
+
+/* inputs */
+.search, .row input {
+  width: 100%;
+  font: inherit; text-transform: uppercase;
+  color: var(--white); background: #000;
+  border: 1px solid var(--div); padding: 8px 10px;
+}
+.search { margin-bottom: 8px; }
+.search::placeholder, .row input::placeholder { color: var(--lose); }
+
+/* game list */
+.gm { display: grid; grid-template-columns: 1fr 52px; border-bottom: 1px solid var(--div); }
+.gm.off .gm-main { opacity: .45; }
+.gm-main { padding: 8px 4px 8px 0; cursor: pointer; }
+.gm-main:active { background: rgba(116, 242, 166, .12); }
+.gm-row { display: grid; grid-template-columns: 26px 1fr 34px; align-items: baseline; line-height: 1.05; font-size: 25px; }
+.gm-row.h .nm { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .3); }
+.rk { color: var(--red); font-size: 17px; text-align: right; padding-right: 6px; text-shadow: none; }
+.nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc { text-align: right; color: var(--white); }
+.gm-det { font-size: 17px; color: var(--gray); text-shadow: none; padding-left: 26px; margin-top: 2px; }
+.gm-det .live { color: var(--red); }
+.gm-det .st { color: var(--mint); }
+.gm.showing { box-shadow: inset 3px 0 0 var(--white); }
+.star { border: none; min-height: 0; font-size: 28px; color: var(--lose); text-shadow: none; }
+.star.on { color: #FFD60A; text-shadow: 0 0 8px rgba(255, 214, 10, .6); background: none; }
+
+/* fantasy players */
+.pl {
+  display: grid; grid-template-columns: 44px 1fr auto 44px; align-items: center; gap: 6px;
+  border-bottom: 1px solid var(--div); min-height: 46px; cursor: pointer;
+}
+.pl:active { background: rgba(116, 242, 166, .12); }
+.pl .pos { color: var(--red); font-size: 18px; text-shadow: none; }
+.pl .tm  { color: var(--gray); font-size: 18px; text-shadow: none; }
+.pl .act { text-align: center; font-size: 26px; }
+.pl .act.rm { color: var(--red); text-shadow: none; }
+.pl.mine .nm { color: var(--white); }
+
+/* settings */
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; min-width: 0; }
+.toggle { width: 100%; margin-top: 10px; }
+.empty { text-align: center; color: var(--lose); text-shadow: none; padding: 16px 0; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>LINE REMOTE</h1>
+  <span class="conn" id="conn">CONNECTING</span>
+</div>
+
+<div class="seg league" id="league">
+  <button data-l="cfb">COLLEGE</button>
+  <button data-l="nfl">NFL</button>
+</div>
+
+<div class="seg hidden" id="screens" style="margin-top:6px">
+  <button data-s="games">GAMES</button>
+  <button data-s="fantasy">FANTASY TOP 5</button>
+  <button data-s="players">MY PLAYERS</button>
+</div>
+
+<div class="now">
+  <div class="now-what" id="nowWhat">—</div>
+  <div class="now-sub" id="nowSub"></div>
+  <div class="ctrl">
+    <button id="bPrev">◀ PREV</button>
+    <button id="bMid">PAUSE</button>
+    <button id="bNext">NEXT ▶</button>
+  </div>
+</div>
+
+<!-- NFL: my fantasy players -->
+<section id="plSection" class="hidden">
+  <h2>MY PLAYERS</h2>
+  <div id="plMine"></div>
+  <input class="search" id="plSearch" placeholder="ADD A PLAYER..." autocomplete="off" autocapitalize="characters" style="margin-top:10px">
+  <div id="plResults"></div>
+</section>
+
+<section id="gamesSection">
+  <h2>SHOW ON BOARD</h2>
+  <div class="seg" id="seg"></div>
+  <div class="seg" id="scope" style="margin-top:6px">
+    <button data-scope="week">THIS WEEK</button>
+    <button data-scope="today">TODAY</button>
+  </div>
+  <div class="seg" id="sort" style="margin-top:6px">
+    <button data-sort="default" id="bSortDefault">BY RANK</button>
+    <button data-sort="soon">SOONEST</button>
+  </div>
+  <div class="chips" id="confs"></div>
+  <div class="hint" id="hint"></div>
+
+  <h2>GAMES</h2>
+  <input class="search" id="search" placeholder="SEARCH TEAM..." autocomplete="off" autocapitalize="characters">
+  <div class="hint" style="margin:0 0 6px">TAP A GAME TO OPEN IT ON TV · ★ TO PICK IT</div>
+  <div id="list"><div class="empty">WAITING FOR THE TV...</div></div>
+</section>
+
+<h2>SETTINGS</h2>
+<div class="row">
+  <input id="myTeams" placeholder="MY TEAMS, E.G. OSU, MICH" autocomplete="off" autocapitalize="characters">
+  <button id="bSaveTeams">SAVE</button>
+</div>
+<button class="toggle" id="bQR">SHOW QR ON TV</button>
+
+<script>
+let status = {};
+let view = {};
+let league = 'cfb';
+let online = false;
+let teamsTouched = false;
+
+const FILTERS = {
+  cfb: [['all', 'ALL FBS'], ['top25', 'TOP 25'], ['live', 'LIVE'], ['conf', 'CONF'], ['picks', 'PICKS']],
+  nfl: [['all', 'ALL'], ['live', 'LIVE'], ['picks', 'PICKS']],
+};
+const FF_POS = { 1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K', 16: 'D/ST' };
+const FF_TEAMS = {
+  1: 'ATL', 2: 'BUF', 3: 'CHI', 4: 'CIN', 5: 'CLE', 6: 'DAL', 7: 'DEN', 8: 'DET', 9: 'GB', 10: 'TEN',
+  11: 'IND', 12: 'KC', 13: 'LV', 14: 'LAR', 15: 'MIA', 16: 'MIN', 17: 'NE', 18: 'NO', 19: 'NYG', 20: 'NYJ',
+  21: 'PHI', 22: 'ARI', 23: 'PIT', 24: 'LAC', 25: 'SF', 26: 'SEA', 27: 'TB', 28: 'WSH', 29: 'CAR', 30: 'JAX',
+  33: 'BAL', 34: 'HOU',
+};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+function flash(btn) {
+  if (!btn) return;
+  btn.classList.add('flash');
+  setTimeout(() => btn.classList.remove('flash'), 250);
+}
+
+/* ── talk to the Pi ───────────────────────────────── */
+async function poll() {
+  try {
+    const r = await fetch('/api/status', { cache: 'no-store' });
+    const d = await r.json();
+    league = d.league || 'cfb';
+    view = d.view || {};
+    // ignore a report from the other league's board while the TV is switching
+    status = (d.status && (d.status.league || 'cfb') === league) ? d.status : {};
+    online = d.age != null && d.age < 15 && !!status.league;
+  } catch (e) {
+    online = false;
+  }
+  if (league === 'nfl') loadPlayerList();
+  render();
+}
+
+async function setView(patch) {
+  try {
+    const r = await fetch('/api/view', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+    });
+    const d = await r.json();
+    view = d.view || view;
+    if (d.league && d.league !== league) { league = d.league; status = {}; }
+    render();
+  } catch (e) {}
+  setTimeout(poll, 1800);   // board applies it on its next check
+}
+
+async function cmd(action, id) {
+  try {
+    await fetch('/api/cmd', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, id }),
+    });
+  } catch (e) {}
+  setTimeout(poll, 1800);
+}
+
+/* ── NFL player list for search (ESPN fantasy, most-rostered first) ── */
+let playerList = null, playerListLoading = false;
+async function loadPlayerList() {
+  if (playerList || playerListLoading) return;
+  playerListLoading = true;
+  const season = status.season || new Date().getFullYear();
+  const filter = { players: {
+    filterSlotIds: { value: [0, 2, 4, 6, 17, 16] },
+    sortPercOwned: { sortAsc: false, sortPriority: 1 },
+    limit: 700,
+  } };
+  try {
+    const r = await fetch(`https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leaguedefaults/3?view=players_wl`,
+                          { headers: { 'X-Fantasy-Filter': JSON.stringify(filter) } });
+    const d = await r.json();
+    playerList = (d.players || []).map(p => p.player || p).map(p => ({
+      id: String(p.id),
+      name: (p.fullName || '').toUpperCase(),
+      pos: FF_POS[p.defaultPositionId] || '',
+      team: FF_TEAMS[p.proTeamId] || 'FA',
+    })).filter(p => p.pos);
+  } catch (e) { console.warn('player list failed', e); }
+  playerListLoading = false;
+  render();
+}
+
+/* ── render ───────────────────────────────────────── */
+function gameById(id) { return (status.games || []).find(g => g.id === id); }
+
+function matchup(g) {
+  const t = x => (x.rank ? '#' + x.rank + ' ' : '') + x.name;
+  return `${t(g.away)} @ ${t(g.home)}`;
+}
+
+function render() {
+  const nfl = league === 'nfl';
+  const screen = nfl ? (view.screen || 'games') : 'games';
+
+  $('conn').textContent = online ? '● TV ONLINE' : '○ TV OFFLINE';
+  $('conn').classList.toggle('on', online);
+
+  for (const b of $('league').children) b.classList.toggle('on', b.dataset.l === league);
+  $('screens').classList.toggle('hidden', !nfl);
+  for (const b of $('screens').children) b.classList.toggle('on', b.dataset.s === screen);
+  $('plSection').classList.toggle('hidden', !nfl);
+  $('gamesSection').classList.toggle('hidden', screen !== 'games');
+
+  // now on TV + controls
+  const open = status.game ? gameById(status.game) : null;
+  $('bPrev').disabled = $('bNext').disabled = screen !== 'games';
+  if (screen !== 'games') {
+    $('nowWhat').textContent = screen === 'fantasy' ? 'FANTASY TOP 5' : 'MY PLAYERS';
+    $('nowSub').textContent = 'ESPN PPR · UPDATES EVERY 90S';
+    $('bMid').textContent = 'BACK TO GAMES';
+  } else if (status.game) {
+    $('nowWhat').textContent = open ? matchup(open) : 'GAME DETAIL';
+    $('nowSub').textContent = open ? [open.status, open.line].filter(Boolean).join(' · ') : '';
+    $('bPrev').textContent = '◀ GAME';
+    $('bNext').textContent = 'GAME ▶';
+    $('bMid').textContent = 'BACK TO BOARD';
+  } else {
+    $('nowWhat').textContent = status.pages ? `BOARD · PAGE ${status.page + 1} OF ${status.pages}` : 'BOARD';
+    $('nowSub').textContent = view.paused ? 'PAGES PAUSED' : 'PAGES ROTATING';
+    $('bPrev').textContent = '◀ PAGE';
+    $('bNext').textContent = 'PAGE ▶';
+    $('bMid').textContent = view.paused ? '▶ RESUME' : '❚❚ PAUSE';
+  }
+
+  // view buttons
+  const filter = view.filter || 'all';
+  $('seg').innerHTML = FILTERS[league].map(([f, label]) =>
+    `<button data-f="${f}" class="${f === filter ? 'on' : ''}">${label}</button>`).join('');
+  for (const b of $('scope').children) b.classList.toggle('on', b.dataset.scope === (view.scope || 'week'));
+  for (const b of $('sort').children)  b.classList.toggle('on', b.dataset.sort === (view.sort || 'default'));
+  $('bSortDefault').textContent = nfl ? 'BY KICKOFF' : 'BY RANK';
+  const confs = (status.confs || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  $('confs').innerHTML = filter === 'conf'
+    ? confs.map(c => `<button data-conf="${esc(c.id)}" class="${c.id === view.conf ? 'on' : ''}">${esc(c.name)}</button>`).join('')
+    : '';
+  const picks = view.picks || [];
+  $('hint').innerHTML =
+      filter === 'conf' && !view.conf ? 'PICK A CONFERENCE'
+    : filter === 'picks' ? `${picks.length} PICKED${picks.length ? '<button id="bClear">CLEAR</button>' : ' · TAP ★ BELOW'}`
+    : '';
+
+  renderGames(picks);
+  if (nfl) renderPlayers();
+
+  // settings
+  $('myTeams').placeholder = nfl ? 'MY TEAMS, E.G. CLE, CIN' : 'MY TEAMS, E.G. OSU, MICH';
+  if (!teamsTouched && document.activeElement !== $('myTeams')) {
+    $('myTeams').value = (view.myTeams || status.myTeams || []).join(', ');
+  }
+  $('bQR').classList.toggle('on', !!view.showQR);
+  $('bQR').textContent = view.showQR ? 'QR ON TV: ON' : 'QR ON TV: OFF';
+}
+
+function renderGames(picks) {
+  const q = $('search').value.trim().toUpperCase();
+  const order = { in: 0, pre: 1, post: 2 };
+  const list = (status.games || [])
+    .filter(g => !q || [g.away.name, g.home.name, g.away.abbr, g.home.abbr].some(s => (s || '').toUpperCase().includes(q)))
+    .sort((a, b) => (order[a.state] - order[b.state]) || (a.t - b.t));
+  $('list').innerHTML = list.length ? list.map(g => {
+    const row = (t, cls) => `<div class="gm-row ${cls}">
+        <span class="rk">${t.rank ?? ''}</span>
+        <span class="nm">${esc(t.name)}</span>
+        <span class="sc">${t.score ?? ''}</span></div>`;
+    const stCls = g.state === 'in' ? 'live' : 'st';
+    const det = [g.line, g.state === 'pre' ? g.broadcast : ''].filter(Boolean).map(esc).join(' · ');
+    const picked = picks.includes(g.id);
+    return `<div class="gm${g.onBoard ? '' : ' off'}${g.id === status.game ? ' showing' : ''}">
+      <div class="gm-main" data-open="${esc(g.id)}">
+        ${row(g.away, 'a')}${row(g.home, 'h')}
+        <div class="gm-det"><span class="${stCls}">${esc(g.status)}</span>${det ? ' · ' + det : ''}</div>
+      </div>
+      <button class="star${picked ? ' on' : ''}" data-pick="${esc(g.id)}" aria-label="Pick game">${picked ? '★' : '☆'}</button>
+    </div>`;
+  }).join('') : `<div class="empty">${online ? 'NO GAMES' : 'WAITING FOR THE TV...'}</div>`;
+}
+
+function renderPlayers() {
+  const mine = view.players || [];
+  const byId = Object.fromEntries((playerList || []).map(p => [p.id, p]));
+  const row = (p, act) => `<div class="pl${act === 'rm' ? ' mine' : ''}" data-${act}="${esc(p.id)}">
+      <span class="pos">${esc(p.pos)}</span><span class="nm">${esc(p.name)}</span>
+      <span class="tm">${esc(p.team)}</span><span class="act ${act}">${act === 'rm' ? '×' : '+'}</span></div>`;
+
+  $('plMine').innerHTML = mine.length
+    ? mine.map(id => row(byId[id] || { id, name: 'PLAYER ' + id, pos: '', team: '' }, 'rm')).join('')
+    : `<div class="empty">NO PLAYERS YET · SEARCH BELOW</div>`;
+
+  const q = $('plSearch').value.trim().toUpperCase();
+  if (!q) { $('plResults').innerHTML = ''; return; }
+  if (!playerList) { $('plResults').innerHTML = `<div class="empty">LOADING PLAYERS...</div>`; return; }
+  const hits = playerList.filter(p => !mine.includes(p.id) && (p.name.includes(q) || p.team === q)).slice(0, 10);
+  $('plResults').innerHTML = hits.length ? hits.map(p => row(p, 'add')).join('') : `<div class="empty">NO MATCHES</div>`;
+}
+
+/* ── controls ─────────────────────────────────────── */
+$('league').onclick = e => {
+  const b = e.target.closest('button');
+  if (b && b.dataset.l !== league) { flash(b); setView({ league: b.dataset.l }); }
+};
+$('screens').onclick = e => {
+  const b = e.target.closest('button');
+  if (b) setView({ screen: b.dataset.s });
+};
+
+$('bPrev').onclick = e => { flash(e.currentTarget); cmd('prev'); };
+$('bNext').onclick = e => { flash(e.currentTarget); cmd('next'); };
+$('bMid').onclick  = e => {
+  flash(e.currentTarget);
+  if (league === 'nfl' && (view.screen || 'games') !== 'games') setView({ screen: 'games' });
+  else if (status.game) cmd('close');
+  else setView({ paused: !view.paused });
+};
+
+$('seg').onclick = e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  const patch = { filter: b.dataset.f };
+  if (b.dataset.f === 'conf' && !view.conf && status.confs?.length) patch.conf = status.confs[0].id;
+  setView(patch);
+};
+$('scope').onclick = e => {
+  const b = e.target.closest('button');
+  if (b) setView({ scope: b.dataset.scope });
+};
+$('sort').onclick = e => {
+  const b = e.target.closest('button');
+  if (b) setView({ sort: b.dataset.sort });
+};
+$('confs').onclick = e => {
+  const b = e.target.closest('button');
+  if (b) setView({ filter: 'conf', conf: b.dataset.conf });
+};
+$('hint').onclick = e => { if (e.target.id === 'bClear') setView({ picks: [] }); };
+
+$('list').onclick = e => {
+  const star = e.target.closest('[data-pick]');
+  if (star) {
+    const id = star.dataset.pick;
+    const picks = view.picks || [];
+    setView({ picks: picks.includes(id) ? picks.filter(x => x !== id) : [...picks, id] });
+    return;
+  }
+  const open = e.target.closest('[data-open]');
+  if (open) { open.style.background = 'rgba(116,242,166,.25)'; cmd('open', open.dataset.open); }
+};
+
+$('plMine').onclick = e => {
+  const r = e.target.closest('[data-rm]');
+  if (r) setView({ players: (view.players || []).filter(id => id !== r.dataset.rm) });
+};
+$('plResults').onclick = e => {
+  const a = e.target.closest('[data-add]');
+  if (!a) return;
+  $('plSearch').value = '';
+  setView({ players: [...(view.players || []), a.dataset.add] });
+};
+
+$('search').oninput = render;
+$('plSearch').oninput = render;
+$('myTeams').oninput = () => { teamsTouched = true; };
+$('bSaveTeams').onclick = e => {
+  flash(e.currentTarget);
+  teamsTouched = false;
+  const teams = $('myTeams').value.split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+  setView({ myTeams: teams });
+};
+$('bQR').onclick = () => setView({ showQR: !view.showQR });
+
+poll();
+setInterval(poll, 2500);
+</script>
+</body>
+</html>

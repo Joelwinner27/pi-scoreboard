@@ -1,0 +1,6 @@
+# private Pi login for deploy.sh
+.deploy.env
+# created by server.py on the Pi
+remote_state.json
+__pycache__/
+.DS_Store
