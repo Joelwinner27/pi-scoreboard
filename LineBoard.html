@@ -1508,7 +1508,7 @@ function showFantasy() {
    Only active when the board is served by server.py (http://…);
    opened as a plain file it runs standalone.
    ════════════════════════════════════════════════════ */
-const REMOTE = { on: false, v: null, lastCmd: null, lastPost: 0, boardVersion: 0, timer: null };
+const REMOTE = { on: false, v: null, lastCmd: null, lastPost: 0, boardVersion: 0, timer: null, reloading: false };
 const bootAt = Date.now();
 
 async function pollRemote() {
@@ -1522,8 +1522,11 @@ async function pollRemote() {
 
     // a new LineBoard.html was copied onto the Pi → load it
     if (s.boardVersion) {
-      if (REMOTE.boardVersion && s.boardVersion !== REMOTE.boardVersion) { location.reload(); return; }
-      REMOTE.boardVersion = s.boardVersion;
+      if (REMOTE.boardVersion && s.boardVersion !== REMOTE.boardVersion) {
+        if (!REMOTE.reloading) { REMOTE.reloading = true; safeReload(); }
+      } else {
+        REMOTE.boardVersion = s.boardVersion;
+      }
     }
 
     const cmds = s.cmds || [];
@@ -1564,6 +1567,21 @@ async function pollRemote() {
     }
     if (Date.now() - REMOTE.lastPost > 5000) publishStatus();   // heartbeat so the phone knows the TV is up
   } catch (e) { /* no server: standalone mode */ }
+}
+
+/* A deploy can replace server.py at the same time, and the server restarts itself
+   a few seconds later. Reloading into that gap can leave the page half-loaded,
+   so wait it out and only reload once the server hands back the whole page. */
+async function safeReload() {
+  await new Promise(r => setTimeout(r, 12000));
+  for (let i = 0; i < 40; i++) {
+    try {
+      const r = await fetch(location.pathname, { cache: 'no-store' });
+      if (r.ok && (await r.text()).includes('</html>')) { location.reload(); return; }
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 3000));
+  }
+  location.reload();
 }
 
 function runCmd(c) {
