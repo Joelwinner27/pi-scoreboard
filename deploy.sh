@@ -16,7 +16,7 @@ if [ -z "$PI" ] || [ -z "$DIR" ]; then
   exit 1
 fi
 
-FILES=(LineBoard.html server.py remote.html start-board.sh setup-pi.sh hide-cursor.sh)
+FILES=(LineBoard.html server.py remote.html start-board.sh setup-pi.sh hide-cursor.sh wifi-watchdog.sh)
 
 if command -v rsync >/dev/null; then
   # --checksum: compare contents, so unchanged files (and their timestamps) are left alone

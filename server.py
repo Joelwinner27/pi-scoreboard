@@ -16,9 +16,13 @@ The board shows a QR code for the remote for its first minute on screen
 """
 import json
 import os
+import re
 import socket
 import threading
 import time
+import urllib.parse
+import urllib.request
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("PORT", "8080"))
@@ -117,6 +121,115 @@ def lan_ip():
         return "127.0.0.1"
 
 
+"""
+Live win probability from Polymarket US (public, no account or key).
+The board asks this server, never Polymarket directly, so a slow or missing
+feed can't hang the TV. Everything is cached; on any error the board just
+leaves the win % off.
+"""
+PM_GATEWAY = "https://gateway.polymarket.us"
+PM_SLUG = re.compile(r"^[a-z0-9-]{3,80}$")
+pm_cache = {}
+pm_lock = threading.Lock()
+
+
+def pm_get(path, timeout=12):
+    req = urllib.request.Request(PM_GATEWAY + path, headers={
+        "User-Agent": "Mozilla/5.0 (Pi Line Board)", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+def pm_cached(key, ttl, fetch):
+    with pm_lock:
+        hit = pm_cache.get(key)
+        if hit and time.time() - hit[0] < ttl:
+            return hit[1]
+    data = fetch()
+    with pm_lock:
+        pm_cache[key] = (time.time(), data)
+        for k in [k for k, v in pm_cache.items() if time.time() - v[0] > 3600]:
+            del pm_cache[k]        # don't let old games pile up
+    return data
+
+
+def pm_time(s):
+    try:
+        return datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0
+
+
+def pm_game(e):
+    """One Polymarket event → what the board needs. px = win chance of the 'long' team."""
+    m = next((m for m in e.get("markets") or [] if m.get("marketType") == "moneyline"), None)
+    if not m or not m.get("slug"):
+        return None
+
+    def quote(key):
+        try:
+            return float((m.get(key) or {}).get("value"))
+        except (TypeError, ValueError):
+            return None
+    bid, ask = quote("bestBidQuote"), quote("bestAskQuote")
+    # a wide gap between buyers and sellers means nobody's really trading it yet
+    px = (bid + ask) / 2 if bid is not None and ask is not None and 0 < bid <= ask and ask - bid <= 0.08 else None
+    long_side = next((s for s in m.get("marketSides") or [] if s.get("long")), {})
+    long_team = long_side.get("team") if isinstance(long_side.get("team"), dict) else {}
+    long_id = str(long_team.get("id") or long_side.get("teamId") or "")
+    teams = [{"abbr": (t.get("abbreviation") or "").upper(), "name": t.get("name") or "",
+              "alias": t.get("alias") or "", "safe": t.get("safeName") or "",
+              "long": bool(long_id) and str(t.get("id")) == long_id}       # px is this team's chance
+             for t in e.get("teams") or []]
+    if len(teams) != 2 or sum(t["long"] for t in teams) != 1:
+        return None
+    return {"slug": m["slug"], "start": pm_time(e.get("startTime")), "teams": teams,
+            "px": round(px, 4) if px is not None else None}
+
+
+def pm_games(lg):
+    out = []
+    for page in range(8):
+        evs = pm_get(f"/v2/leagues/{lg}/events?limit=100&offset={page * 100}").get("events") or []
+        out += [g for g in map(pm_game, evs) if g]
+        if len(evs) < 100 or pm_time(evs[-1].get("startTime")) > time.time() + 9 * 86400:
+            break
+    return {"at": time.time(), "games": out}
+
+
+def pm_history(slug, start):
+    """Win chance of the long team from kickoff to now, thinned to about 240 points."""
+    raw = pm_get("/v1/price-history?fidelity=1&fixedInterval=1&symbol=" + urllib.parse.quote(slug),
+                 timeout=25).get("history") or []
+    pts = []
+    for p in raw:
+        try:
+            t, lp, sp = float(p["timestamp"]), float(p["longPrice"]), float(p["shortPrice"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if t > 1e12:
+            t /= 1000
+        if 0 <= lp <= 1 and abs(lp + sp - 1) <= 0.05:     # skip placeholder prices like 0.96 / 0.96
+            pts.append((t, lp))
+    pts.sort()
+    game = [p for p in pts if p[0] > start]
+    before = [p for p in pts if p[0] <= start]
+    if before:
+        game.insert(0, (start, before[-1][1]))              # opening line at kickoff
+    if len(game) > 240:
+        t0, step = game[0][0], (game[-1][0] - game[0][0]) / 240 or 1
+        thin, last = [], None
+        for t, v in game:
+            b = int((t - t0) / step)
+            if b == last:
+                thin[-1] = (t, v)
+            else:
+                thin.append((t, v))
+                last = b
+        game = thin
+    return {"at": time.time(), "points": [[int(t), round(v, 4)] for t, v in game]}
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass  # keep the Pi's console quiet
@@ -165,6 +278,30 @@ class Handler(BaseHTTPRequestHandler):
                                 "league": league, "view": views[league]})
         elif path == "/api/info":
             self.send_json({"remoteUrl": f"http://{lan_ip()}:{PORT}/remote"})
+        elif path == "/api/wp":            # live win % for every game in the league
+            q = urllib.parse.parse_qs(self.path.partition("?")[2])
+            lg = (q.get("league") or [league])[0]
+            if lg not in LEAGUES:
+                return self.send_json({"error": "bad league"}, 400)
+            try:
+                self.send_json(pm_cached("games:" + lg, 20, lambda: pm_games(lg)))
+            except Exception as e:     # feed down or changed: the board shows no win %
+                self.send_json({"error": str(e)[:200]}, 502)
+        elif path == "/api/wp/history":    # one game's win % since kickoff, for the chart
+            q = urllib.parse.parse_qs(self.path.partition("?")[2])
+            slug = (q.get("slug") or [""])[0]
+            try:
+                start = float((q.get("start") or ["0"])[0])
+            except ValueError:
+                start = 0
+            if not PM_SLUG.match(slug):
+                return self.send_json({"error": "bad slug"}, 400)
+            done = q.get("final") == ["1"]          # finished games never change, so keep them longer
+            try:
+                self.send_json(pm_cached(f"hist:{slug}:{int(start)}", 1800 if done else 60,
+                                         lambda: pm_history(slug, start)))
+            except Exception as e:
+                self.send_json({"error": str(e)[:200]}, 502)
         else:
             self.send_json({"error": "not found"}, 404)
 

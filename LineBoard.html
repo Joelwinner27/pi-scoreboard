@@ -139,6 +139,7 @@ header {
 .det .st   { color: var(--mint); text-shadow: var(--glow); }
 .det .live { color: var(--red);  text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
 .det .hot  { color: var(--red); }
+.det .wp   { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
 
 .no-data {
   grid-column: 1 / -1;
@@ -299,6 +300,10 @@ body.show-cursor .game:hover,
 
 /* field */
 .d-field { width: 100%; height: 22vh; display: block; }
+.has-wp .d-field { height: 17vh; }
+
+/* win-probability chart */
+.d-wp { width: 100%; height: 17vh; display: block; text-shadow: none; }
 .d-last {
   font-size: var(--fs-det); color: var(--gray); text-shadow: none;
   text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -554,6 +559,9 @@ function parseGame(ev) {
       logo:   t.logo || '',
       color:  safeHex(t.color),
       record: c.records?.find(x => x.type === 'total')?.summary || '',
+      // every way ESPN names the team, for matching win-% markets
+      aka:    [t.abbreviation, t.displayName, t.location, t.shortDisplayName, L.nicknames ? t.name : ''].filter(Boolean),
+      nick:   t.name || '',
     };
   };
   const away = team(A), home = team(H);
@@ -667,7 +675,7 @@ async function fetchScoreboard(extra) {
     const q = [CONFIG.query, extra].filter(Boolean).join('&');
     const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${CONFIG.path}/scoreboard?${q}`,
                           { signal: ctl.signal, cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) { r.body?.cancel(); throw new Error('HTTP ' + r.status); }
     const d = await r.json();
     if (!d || !Array.isArray(d.events)) throw new Error('bad scoreboard payload');
     return d;
@@ -729,6 +737,7 @@ function loadBoardCache() {
 }
 
 function afterData() {
+  applyWP();
   applyView();
   if (detailId) { renderDetail(); loadSummary(); }
   if (view.screen !== 'games' && !ff.at) refreshFantasy();
@@ -871,6 +880,9 @@ function buildSlotItems() {
 function detailHTML(g) {
   const bits = [];
   let st;
+
+  const wp = wpText(g);
+  if (wp) bits.push(wp);
 
   if (g.state === 'in') {
     if (g.statusName === 'STATUS_HALFTIME')        st = 'HALFTIME';
@@ -1052,7 +1064,7 @@ function syncView() {
   const id = (location.hash.match(/game=(\d+)/) || [])[1] || null;
   if (id !== detailId) { detailId = id; summary = null; }
   document.getElementById('detail').classList.toggle('open', !!detailId);
-  if (detailId) { renderDetail(); loadSummary(); }
+  if (detailId) { renderDetail(); loadSummary(); loadWpHistory(); }
   publishStatus();
 }
 
@@ -1061,7 +1073,7 @@ async function loadSummary() {
   if (!id) return;
   try {
     const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${CONFIG.path}/summary?event=${id}`, { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) { r.body?.cancel(); throw new Error('HTTP ' + r.status); }
     const d = await r.json();
     if (id !== detailId) return;           // user moved on while this was loading
     summary = d;
@@ -1248,13 +1260,156 @@ function renderDetail() {
   document.getElementById('dStatus').innerHTML = st;
   document.getElementById('dNet').textContent = g.broadcast || '';
 
+  const chart = wpChartSVG(g);
   let html = `<div class="d-teams">${teamBlock(g, 'away')}${middlePanel(g)}${teamBlock(g, 'home')}</div>`;
   if (g.state === 'in') {
     html += fieldSVG(g);
     if (g.lastPlay) html += `<div class="d-last"><span>LAST PLAY:</span> ${esc(g.lastPlay)}</div>`;
   }
+  html += chart;
   html += `<div class="d-leaders">${leadersHTML(g)}</div>`;
   main.innerHTML = html;
+  main.classList.toggle('has-wp', !!chart);
+}
+
+/* ── LIVE WIN % ──────────────────────────────────────
+   Polymarket US win chances, fetched by server.py (/api/wp) and matched to
+   ESPN games by kickoff time + team names. Anything missing just leaves the
+   win % off. A finished game drops out of Polymarket's list, so each game's
+   market is remembered for its chart.                                    */
+const WP = { list: null, byId: {}, hist: {}, slugs: {}, timer: null };
+const WP_SLUGS = LEAGUE + 'WpSlugs_v1';
+try { WP.slugs = JSON.parse(localStorage.getItem(WP_SLUGS)) || {}; } catch (e) {}
+
+// "San José State" → "sanjosestate"
+const normName = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// loose: also accept a matching mascot ("NM State" Aggies = "New Mexico State" Aggies)
+function teamIs(t, p, loose) {
+  const mine = new Set((t.aka || []).map(normName).filter(s => s.length > 1));
+  if ([p.abbr, p.name, p.safe].map(normName).some(s => s.length > 1 && mine.has(s))) return true;
+  return !!loose && normName(p.alias).length > 2 && normName(p.alias) === normName(t.nick);
+}
+
+// true/false = the market's price is the away/home team's chance; null = not this game.
+// One team must match by name; the other may match by mascot alone.
+function wpSide(g, p) {
+  if (!p.teams || p.teams.length !== 2 || Math.abs(p.start - g.date.getTime() / 1000) > 6 * 3600) return null;
+  const [a, b] = p.teams;
+  const fits = (x, y) => (teamIs(g.away, x) && teamIs(g.home, y, true)) || (teamIs(g.away, x, true) && teamIs(g.home, y));
+  if (fits(a, b)) return a.long;
+  if (fits(b, a)) return b.long;
+  return null;
+}
+
+function applyWP() {
+  if (!WP.list) return;
+  const byId = {};
+  for (const g of Object.values(allById)) {
+    for (const p of WP.list) {
+      const awayLong = wpSide(g, p);
+      if (awayLong == null) continue;
+      byId[g.id] = { slug: p.slug, awayLong, away: p.px == null ? null : (awayLong ? p.px : 1 - p.px) };
+      WP.slugs[g.id] = { slug: p.slug, awayLong, t: Date.now() };
+      break;
+    }
+  }
+  WP.byId = byId;
+  const cutoff = Date.now() - 10 * 86400e3;
+  for (const id in WP.slugs) if (WP.slugs[id].t < cutoff) delete WP.slugs[id];
+  try { localStorage.setItem(WP_SLUGS, JSON.stringify(WP.slugs)); } catch (e) {}
+}
+
+async function refreshWP() {
+  try {
+    const r = await fetch('/api/wp?league=' + LEAGUE, { cache: 'no-store' });
+    if (r.status === 404) { r.body?.cancel(); clearInterval(WP.timer); return; }   // older server.py, or no server
+    if (!r.ok) { r.body?.cancel(); throw new Error('HTTP ' + r.status); }
+    WP.list = (await r.json()).games || [];
+  } catch (e) {
+    // keep the last numbers for a few minutes, then drop them rather than show stale odds
+    if (WP.at && Date.now() - WP.at > 5 * 60e3) { WP.list = []; }
+    else return;
+  }
+  WP.at = WP.list.length ? Date.now() : WP.at;
+  applyWP();
+  if (pages.length) drawPage();
+  if (detailId) { renderDetail(); loadWpHistory(); }
+}
+
+// "KC 94%" for whichever team the market favors
+function wpText(g) {
+  const w = WP.byId[g.id];
+  if (!w || w.away == null || g.state === 'post') return '';
+  const lead = w.away >= 0.5 ? g.away : g.home;
+  const pct = Math.min(99, Math.max(1, Math.round(Math.max(w.away, 1 - w.away) * 100)));
+  return `<span class="wp">${esc(lead.abbr)} ${pct}%</span>`;
+}
+
+async function loadWpHistory() {
+  const id = detailId, g = allById[id];
+  const m = WP.byId[id] || WP.slugs[id];
+  if (!g || !m || g.state === 'pre') return;
+  const have = WP.hist[id];
+  if (have && Date.now() - have.at < (g.state === 'post' ? 30 * 60e3 : 55e3)) return;
+  try {
+    const q = `slug=${encodeURIComponent(m.slug)}&start=${Math.round(g.date.getTime() / 1000)}${g.state === 'post' ? '&final=1' : ''}`;
+    const r = await fetch('/api/wp/history?' + q, { cache: 'no-store' });
+    if (!r.ok) { r.body?.cancel(); throw new Error('HTTP ' + r.status); }
+    const pts = ((await r.json()).points || []).map(([t, v]) => [t, m.awayLong ? v : 1 - v]);
+    WP.hist[id] = { at: Date.now(), pts };
+    if (id === detailId) renderDetail();
+  } catch (e) { console.warn('win % history failed', e); }
+}
+
+/* Win-probability chart: top edge = away team certain to win, bottom = home.
+   Away side in mint, home side in white, like the board's two-tone rows.  */
+function wpChartSVG(g) {
+  const h = WP.hist[g.id];
+  if (!h || h.pts.length < 2) return '';
+  const pts = h.pts.slice();
+  const live = WP.byId[g.id];
+  if (g.state === 'in' && live?.away != null) pts.push([Date.now() / 1000, live.away]);
+
+  const X0 = 90, X1 = 1030, T = 8, B = 132;
+  const t0 = pts[0][0], t1 = Math.max(pts[pts.length - 1][0], t0 + 60);
+  const x = t => (X0 + (t - t0) / (t1 - t0) * (X1 - X0)).toFixed(1);
+  const y = v => (T + (1 - v) * (B - T)).toFixed(1);
+  const mid = y(0.5);
+
+  let line = `M${x(pts[0][0])},${y(pts[0][1])}`;
+  for (let i = 1; i < pts.length; i++) line += ` H${x(pts[i][0])} V${y(pts[i][1])}`;
+  const area = `${line} V${mid} H${x(pts[0][0])} Z`;
+
+  const end = pts[pts.length - 1], ex = x(end[0]), ey = y(end[1]);
+  const awayLeads = end[1] >= 0.5;
+  const lead = awayLeads ? g.away : g.home;
+  const pct = Math.min(99, Math.max(1, Math.round(Math.max(end[1], 1 - end[1]) * 100)));
+  const labelY = Math.min(B - 4, Math.max(T + 22, +ey + 8));
+
+  let s = `<defs>
+      <clipPath id="wpTop"><rect x="0" y="0" width="1200" height="${mid}"/></clipPath>
+      <clipPath id="wpBot"><rect x="0" y="${mid}" width="1200" height="200"/></clipPath>
+    </defs>`;
+  for (const v of [0.25, 0.75]) s += `<line x1="${X0}" x2="${X1}" y1="${y(v)}" y2="${y(v)}" stroke="#0F3A33" stroke-width="1" stroke-dasharray="6 8"/>`;
+  s += `<line x1="${X0}" x2="${X1}" y1="${mid}" y2="${mid}" stroke="#1E6B5A" stroke-width="2"/>`;
+  s += `<rect x="${X0}" y="${T}" width="${X1 - X0}" height="${B - T}" fill="none" stroke="#0F3A33" stroke-width="2"/>`;
+  s += `<path d="${area}" fill="rgba(116,242,166,.20)" clip-path="url(#wpTop)"/>`;
+  s += `<path d="${area}" fill="rgba(255,255,255,.14)" clip-path="url(#wpBot)"/>`;
+  s += `<path d="${line}" fill="none" stroke="#74F2A6" stroke-width="3" stroke-linejoin="round" clip-path="url(#wpTop)"/>`;
+  s += `<path d="${line}" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round" clip-path="url(#wpBot)"/>`;
+  s += `<circle cx="${ex}" cy="${ey}" r="7" fill="${awayLeads ? '#74F2A6' : '#FFFFFF'}"/>`;
+
+  // team labels on the left, current chance on the right, time along the bottom
+  s += `<text x="${X0 - 12}" y="${T + 20}" fill="#74F2A6" font-size="26" text-anchor="end">${esc(g.away.abbr)}</text>`;
+  s += `<text x="${X0 - 12}" y="${B - 2}" fill="#FFFFFF" font-size="26" text-anchor="end">${esc(g.home.abbr)}</text>`;
+  s += `<text x="${X0 - 12}" y="${+mid + 8}" fill="#7A8A86" font-size="22" text-anchor="end">50%</text>`;
+  s += `<text x="${X1 + 14}" y="${labelY}" fill="${awayLeads ? '#74F2A6' : '#FFFFFF'}" font-size="34">${esc(lead.abbr)} ${pct}%</text>`;
+  s += `<text x="${X0}" y="${B + 24}" fill="#7A8A86" font-size="22">KICKOFF</text>`;
+  s += `<text x="${X1}" y="${B + 24}" fill="#7A8A86" font-size="22" text-anchor="end">${g.state === 'post' ? 'FINAL' : 'NOW'}</text>`;
+  s += `<text x="${(X0 + X1) / 2}" y="${B + 24}" fill="#7A8A86" font-size="22" text-anchor="middle" letter-spacing="3">WIN PROBABILITY · POLYMARKET</text>`;
+
+  return `<svg class="d-wp" viewBox="0 0 1200 160" font-family="VT323, monospace">${s}</svg>`;
 }
 
 /* ── CONTROLS ────────────────────────────────────────
@@ -1349,7 +1504,7 @@ async function ffFetch(week, filter) {
   const url = `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${seasonYear}/segments/0/leaguedefaults/3`
             + `?view=kona_player_info&scoringPeriodId=${week}`;
   const r = await fetch(url, { headers: { 'X-Fantasy-Filter': JSON.stringify({ players: filter }) }, cache: 'no-store' });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
+  if (!r.ok) { r.body?.cancel(); throw new Error('HTTP ' + r.status); }
   return (await r.json()).players || [];
 }
 // only return the one week's actual stats (keeps the response ~5x smaller)
@@ -1515,8 +1670,8 @@ async function pollRemote() {
   try {
     const r = await fetch('/api/state', { cache: 'no-store' });
     // hosted somewhere without server.py (e.g. GitHub Pages): stop asking
-    if (r.status === 404 && !REMOTE.on) { clearInterval(REMOTE.timer); return; }
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (r.status === 404 && !REMOTE.on) { r.body?.cancel(); clearInterval(REMOTE.timer); return; }
+    if (!r.ok) { r.body?.cancel(); throw new Error('HTTP ' + r.status); }
     const s = await r.json();
     if (!REMOTE.on) { REMOTE.on = true; initQR(); }
 
@@ -1625,8 +1780,11 @@ function publishStatus() {
       };
     }),
   };
+  // Read the reply even though we don't need it: Chromium holds every unread
+  // response open, and at this rate the TV browser ran out of file handles
+  // after about an hour (every request then failed → DATA DELAYED).
   fetch('/api/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    .catch(() => {});
+    .then(r => r.text()).catch(() => {});
 }
 
 /* QR code in the corner: first minute after start-up, or while "SHOW QR" is on */
@@ -1668,6 +1826,8 @@ setInterval(updateChrome, 1000);
 if (location.protocol.startsWith('http')) {
   REMOTE.timer = setInterval(pollRemote, 1500);
   pollRemote();
+  WP.timer = setInterval(refreshWP, 30000);
+  refreshWP();
   setInterval(updateQR, 5000);
 }
 // Periodic reload keeps the Pi's browser fresh - but never while the data feed is down
