@@ -3,6 +3,9 @@
 # 2 minutes as root (lineboard-wifi-watchdog.timer).
 #
 # If the router can't be reached:
+#   Wi-Fi not connected at all   → switch Wi-Fi off and on at the first check
+#                                  (the Pi's Wi-Fi chip can get stuck after a failed
+#                                  hop between the router's radios; waiting doesn't help)
 #   3 checks in a row (~6 min)   → switch Wi-Fi off and on
 #   6 checks in a row (~12 min)  → restart NetworkManager
 #   10+ checks in a row (~20 min) → reboot, at most once an hour
@@ -23,7 +26,7 @@ fails=$(( $(cat "$STATE" 2>/dev/null || echo 0) + 1 ))
 echo "$fails" > "$STATE"
 logger -t lineboard-wifi "can't reach the router (${router:-no route}) - check $fails"
 
-if [ "$fails" -eq 3 ]; then
+if { [ "$fails" -eq 1 ] && [ -z "$router" ] && [ "$(cut -d. -f1 /proc/uptime)" -gt 300 ]; } || [ "$fails" -eq 3 ]; then
   logger -t lineboard-wifi "switching Wi-Fi off and on"
   nmcli radio wifi off; sleep 5; nmcli radio wifi on
 elif [ "$fails" -eq 6 ]; then

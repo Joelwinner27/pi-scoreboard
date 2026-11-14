@@ -1035,7 +1035,8 @@ function updateChrome() {
     : (weekNum ? `WEEK ${weekNum}` : 'THIS WEEK');
   if (viewLabel()) document.getElementById('hdrDate').textContent += ' · ' + viewLabel();
 
-  document.getElementById('fLines').textContent = `LINES: ${provider ? provider.toUpperCase() : '—'} PREGAME`;
+  document.getElementById('fLines').textContent = `LINES: ${provider ? provider.toUpperCase() : '—'} PREGAME`
+    + (remoteAddr ? ` · REMOTE ${remoteAddr}` : '');   // always on screen, so the phone can find the remote
 
   const stale = lastOk && now - lastOk > (CONFIG.refreshSeconds * 2 + 30) * 1000;
   const live = games.filter(g => g.state === 'in').length;
@@ -1787,12 +1788,16 @@ function publishStatus() {
     .then(r => r.text()).catch(() => {});
 }
 
-/* QR code in the corner: first minute after start-up, or while "SHOW QR" is on */
+/* QR code in the corner: first minute after start-up, the first minute of every
+   quarter hour (:00 :15 :30 :45), or while "SHOW QR" is on. The quarter-hour
+   showing means a phone that lost the remote can always get it back. */
 let qrMade = false;
+let remoteAddr = '';
 async function initQR() {
   try {
     const info = await (await fetch('/api/info', { cache: 'no-store' })).json();
-    document.getElementById('qrUrl').textContent = info.remoteUrl.replace(/^https?:\/\//, '');
+    remoteAddr = info.remoteUrl.replace(/^https?:\/\//, '');
+    document.getElementById('qrUrl').textContent = remoteAddr;
     if (window.QRCode) {
       new QRCode(document.getElementById('qrCode'), {
         text: info.remoteUrl, width: 256, height: 256,
@@ -1804,7 +1809,7 @@ async function initQR() {
   } catch (e) {}
 }
 function updateQR() {
-  const show = qrMade && (view.showQR || Date.now() - bootAt < 60000);
+  const show = qrMade && (view.showQR || Date.now() - bootAt < 60000 || Date.now() % (15 * 60000) < 60000);
   document.getElementById('qr').classList.toggle('show', show);
 }
 

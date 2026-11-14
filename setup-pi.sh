@@ -5,7 +5,8 @@
 #   and restarts itself when a new server.py is copied over)
 # - opens the board full screen at login, with a watchdog (start-board.sh)
 # - keeps Wi-Fi connected: power saving off, retries forever after a power cut,
-#   and a watchdog that resets Wi-Fi if the router stops answering
+#   2.4 GHz only, and a watchdog that resets Wi-Fi if the router stops answering
+#   (WIFI_BAND=any bash setup-pi.sh lets it use 5 GHz again)
 # - turns off screen blanking
 # Safe to run again after updates. Asks for your password once (for sudo).
 
@@ -76,6 +77,16 @@ EOF
   if [ -n "$WIFI" ]; then
     sudo nmcli con modify "$WIFI" connection.autoconnect-retries 0 802-11-wireless.powersave 2 \
       && echo "   \"$WIFI\": power saving off, retries forever"
+    # Routers with one name for both radios nudge devices from 2.4 to 5 GHz. The Pi's
+    # built-in Wi-Fi can get stuck offline when that hop fails (dozens of drops a day
+    # here), and a board that never moves gains nothing from 5 GHz - so stay on 2.4.
+    if [ "${WIFI_BAND:-2.4}" = "any" ]; then
+      sudo nmcli con modify "$WIFI" 802-11-wireless.band "" && echo "   \"$WIFI\": any band"
+    else
+      sudo nmcli con modify "$WIFI" 802-11-wireless.band bg && echo "   \"$WIFI\": 2.4 GHz only"
+    fi
+    # apply now (Wi-Fi drops for a few seconds)
+    sudo nmcli con up "$WIFI" >/dev/null 2>&1 || true
   else
     echo "   not on Wi-Fi right now - power saving is still turned off for when it is"
   fi

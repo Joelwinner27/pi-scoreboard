@@ -11,8 +11,9 @@ Standard library only — nothing to install.
 
 On the Pi, setup-pi.sh installs this as a service that starts at boot.
 
-The board shows a QR code for the remote for its first minute on screen
-(and any time "SHOW QR ON TV" is switched on from the remote).
+The board shows a QR code for the remote for its first minute on screen, for
+a minute every quarter hour, and any time "SHOW QR ON TV" is switched on from
+the remote. The remote's address is also always in the board's footer.
 """
 import json
 import os
@@ -257,6 +258,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
+        if path.lower() in PAGES:          # the TV shows the address in capitals
+            path = path.lower()
         if path in PAGES:
             try:
                 with open(os.path.join(HERE, PAGES[path]), "rb") as f:
