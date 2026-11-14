@@ -14,6 +14,10 @@ On the Pi, setup-pi.sh installs this as a service that starts at boot.
 The board shows a QR code for the remote for its first minute on screen, for
 a minute every quarter hour, and any time "SHOW QR ON TV" is switched on from
 the remote. The remote's address is also always in the board's footer.
+
+Board-wide settings (sound cues, night dimming, the game-day schedule) live
+here too, and the server switches the board's league by day of the week when
+the schedule is on. Kickoff weather comes from Open-Meteo (free, no key).
 """
 import json
 import os
@@ -23,7 +27,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("PORT", "8080"))
@@ -51,8 +55,28 @@ DEFAULT_VIEW = {
     "players": [],        # NFL: ESPN fantasy player ids for MY PLAYERS
 }
 
+# Board-wide settings (not per league). days[0] = Monday ... days[6] = Sunday:
+# which league and view the board switches to that day when "auto" is on.
+DEFAULT_SETTINGS = {
+    "sound": True,        # beeps for scores, upsets, my team's kickoff, finals
+    "night": True,        # dim late at night, black overnight
+    "auto": True,         # game-day schedule
+    "days": [
+        {"league": "nfl", "scope": "today"},   # Mon
+        {"league": "cfb", "scope": "week"},    # Tue
+        {"league": "cfb", "scope": "week"},    # Wed
+        {"league": "nfl", "scope": "today"},   # Thu
+        {"league": "cfb", "scope": "today"},   # Fri
+        {"league": "cfb", "scope": "today"},   # Sat
+        {"league": "nfl", "scope": "today"},   # Sun
+    ],
+}
+ROLLOVER_HOUR = 5         # the board's day runs until 5 AM (late West Coast games)
+
 lock = threading.Lock()
 league = "cfb"
+settings = json.loads(json.dumps(DEFAULT_SETTINGS))
+auto_day = ""             # the board day the schedule was last applied for
 views = {lg: dict(DEFAULT_VIEW) for lg in LEAGUES}
 version = 1
 cmds = []                              # recent one-shot commands for the board
@@ -62,11 +86,12 @@ board_status_at = 0.0
 
 
 def load_state():
-    global league
+    global league, auto_day
     try:
         with open(STATE_FILE) as f:
             saved = json.load(f)
     except (OSError, ValueError):
+        auto_day = board_day()[0]      # fresh install: the schedule starts tomorrow
         return
     if "views" not in saved:                      # older single-league file = CFB settings
         saved = {"league": "cfb", "views": {"cfb": saved}}
@@ -75,12 +100,18 @@ def load_state():
     for lg in LEAGUES:
         stored = saved["views"].get(lg) or {}
         views[lg].update({k: v for k, v in stored.items() if k in DEFAULT_VIEW})
+    if isinstance(saved.get("settings"), dict):
+        settings.update(clean_settings_patch(saved["settings"]))
+        auto_day = str(saved.get("autoDay") or "")
+    else:
+        # first run with the schedule: leave today as it is, start tomorrow
+        auto_day = board_day()[0]
 
 
 def save_state():
     try:
         with open(STATE_FILE, "w") as f:
-            json.dump({"league": league, "views": views}, f)
+            json.dump({"league": league, "views": views, "settings": settings, "autoDay": auto_day}, f)
     except OSError:
         pass
 
@@ -108,6 +139,164 @@ def clean_view_patch(data):
     if isinstance(data.get("players"), list):
         out["players"] = [str(x)[:20] for x in data["players"]][:40]
     return out
+
+
+def clean_settings_patch(data):
+    out = {}
+    for key in ("sound", "night", "auto"):
+        if isinstance(data.get(key), bool):
+            out[key] = data[key]
+    days = data.get("days")
+    if isinstance(days, list) and len(days) == 7 and all(
+            isinstance(d, dict) and d.get("league") in LEAGUES and d.get("scope") in ("week", "today")
+            for d in days):
+        out["days"] = [{"league": d["league"], "scope": d["scope"]} for d in days]
+    return out
+
+
+def board_day():
+    """(date string, weekday 0=Mon) of the board's current day."""
+    d = datetime.now() - timedelta(hours=ROLLOVER_HOUR)
+    return d.strftime("%Y-%m-%d"), d.weekday()
+
+
+def apply_schedule(force=False):
+    """Game-day schedule: once per board day, switch to that day's league and view.
+    The remote can still change things afterwards; they stick until tomorrow.
+    Call with the lock held."""
+    global league, version, board_status, auto_day
+    if not settings["auto"]:
+        return
+    day, wd = board_day()
+    if day == auto_day and not force:
+        return
+    auto_day = day
+    plan = settings["days"][wd]
+    if plan["league"] != league:
+        league = plan["league"]
+        board_status = {}
+    views[league]["scope"] = plan["scope"]
+    version += 1
+    save_state()
+
+
+def schedule_loop():
+    while True:
+        time.sleep(30)
+        try:
+            with lock:
+                apply_schedule()
+        except Exception as e:       # never let the thread die
+            print("schedule:", e, flush=True)
+
+
+"""
+Kickoff weather from Open-Meteo (free, no account or key).
+The board sends the outdoor games it is showing (city, state, kickoff time);
+the reply has whatever is known so far, and anything missing is looked up in
+the background so a slow weather service can't hang the TV.
+"""
+STATES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California", "CO": "Colorado",
+    "CT": "Connecticut", "DE": "Delaware", "DC": "District of Columbia", "FL": "Florida", "GA": "Georgia",
+    "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana", "IA": "Iowa", "KS": "Kansas",
+    "KY": "Kentucky", "LA": "Louisiana", "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts",
+    "MI": "Michigan", "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
+    "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico",
+    "NY": "New York", "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma",
+    "OR": "Oregon", "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota",
+    "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont", "VA": "Virginia", "WA": "Washington",
+    "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+}
+# stadium "cities" the map service doesn't know → the town they are in
+CITY_FIX = {"USAF ACADEMY": "Colorado Springs", "NOTRE DAME": "South Bend", "UNIVERSITY PARK": "State College",
+            "DEKALB": "DeKalb"}
+WX_TTL = 3600
+wx_lock = threading.Lock()
+wx_places = {}        # "CITY|ST" → (lat, lon), or None when it can't be found
+wx_forecasts = {}     # "CITY|ST" → (fetched at, {hour: (temp, wind, rain chance, code)})
+wx_queue = []         # places waiting for a lookup
+wx_wake = threading.Event()
+
+
+def http_json(url, timeout=12):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Pi Line Board)", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+def wx_locate(city, state):
+    name = CITY_FIX.get(city.upper(), city)
+    q = urllib.parse.urlencode({"name": name, "count": 20, "language": "en", "format": "json"})
+    hits = http_json("https://geocoding-api.open-meteo.com/v1/search?" + q).get("results") or []
+    want = STATES.get(state.upper())
+    if want:
+        hits = [h for h in hits if h.get("country_code") == "US" and h.get("admin1") == want]
+    return (hits[0]["latitude"], hits[0]["longitude"]) if hits else None
+
+
+def wx_fetch(lat, lon):
+    q = urllib.parse.urlencode({
+        "latitude": lat, "longitude": lon, "timeformat": "unixtime", "forecast_days": 10,
+        "hourly": "temperature_2m,precipitation_probability,weather_code,wind_speed_10m",
+        "temperature_unit": "fahrenheit", "wind_speed_unit": "mph"})
+    h = http_json("https://api.open-meteo.com/v1/forecast?" + q)["hourly"]
+    return {int(t): (h["temperature_2m"][i], h["wind_speed_10m"][i], h["precipitation_probability"][i], h["weather_code"][i])
+            for i, t in enumerate(h["time"])}
+
+
+def wx_worker():
+    while True:
+        wx_wake.wait()
+        with wx_lock:
+            key = wx_queue.pop(0) if wx_queue else None
+            if key is None:
+                wx_wake.clear()
+                continue
+        try:
+            city, state = key.split("|")
+            with wx_lock:
+                known, spot = key in wx_places, wx_places.get(key)
+            if not known:
+                spot = wx_locate(city, state)
+                with wx_lock:
+                    wx_places[key] = spot
+            hours = wx_fetch(*spot) if spot else {}
+        except Exception as e:           # service down: try again in a few minutes
+            print("weather:", key, str(e)[:120], flush=True)
+            with wx_lock:
+                wx_forecasts[key] = (time.time() - WX_TTL + 300, (wx_forecasts.get(key) or (0, {}))[1])
+            continue
+        with wx_lock:
+            wx_forecasts[key] = (time.time(), hours)
+        time.sleep(0.25)                 # be polite to a free service
+
+
+def wx_lookup(games):
+    """games: [{"id", "city", "state", "t" (kickoff, unix seconds)}] → ({id: weather}, still waiting)"""
+    out, pending = {}, 0
+    with wx_lock:
+        for g in games[:150]:
+            try:
+                gid, t = str(g["id"])[:20], float(g["t"])
+                city, state = str(g["city"]).strip().upper()[:40], str(g.get("state") or "").strip().upper()[:3]
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not city or "|" in city or "|" in state:
+                continue
+            key = city + "|" + state
+            have = wx_forecasts.get(key)
+            if not have or time.time() - have[0] > WX_TTL:
+                if key not in wx_queue and len(wx_queue) < 200:
+                    wx_queue.append(key)
+                if not have:
+                    pending += 1
+            hour = (have or (0, {}))[1].get(int(round(t / 3600)) * 3600)
+            if hour and None not in hour[:2]:
+                out[gid] = {"temp": round(hour[0]), "wind": round(hour[1]), "rain": hour[2], "code": hour[3]}
+        if wx_queue:
+            wx_wake.set()
+    return out, pending
 
 
 def lan_ip():
@@ -273,12 +462,12 @@ class Handler(BaseHTTPRequestHandler):
                 board_version = 0
             with lock:
                 self.send_json({"v": version, "league": league, "views": views, "cmds": cmds,
-                                "boardVersion": board_version})
+                                "settings": settings, "boardVersion": board_version})
         elif path == "/api/status":
             with lock:
                 age = time.time() - board_status_at if board_status_at else None
                 self.send_json({"status": board_status, "age": age, "v": version,
-                                "league": league, "view": views[league]})
+                                "league": league, "view": views[league], "settings": settings})
         elif path == "/api/info":
             self.send_json({"remoteUrl": f"http://{lan_ip()}:{PORT}/remote"})
         elif path == "/api/wp":            # live win % for every game in the league
@@ -325,8 +514,23 @@ class Handler(BaseHTTPRequestHandler):
                 version += 1
                 save_state()
                 self.send_json({"v": version, "league": league, "view": views[league]})
+        elif path == "/api/settings":      # phone changed a board-wide setting
+            patch = clean_settings_patch(data)
+            with lock:
+                settings.update(patch)
+                version += 1
+                if "days" in patch or patch.get("auto"):
+                    apply_schedule(force=True)     # today's plan takes effect right away
+                save_state()
+                self.send_json({"v": version, "league": league, "view": views[league], "settings": settings})
+        elif path == "/api/wx":            # kickoff weather for the games on the board
+            games = data.get("games")
+            if not isinstance(games, list):
+                return self.send_json({"error": "bad games"}, 400)
+            wx, pending = wx_lookup(games)
+            self.send_json({"wx": wx, "pending": pending})
         elif path == "/api/cmd":           # phone tapped a one-shot action
-            if data.get("action") not in ("open", "close", "next", "prev"):
+            if data.get("action") not in ("open", "close", "next", "prev", "sound"):
                 return self.send_json({"error": "bad action"}, 400)
             with lock:
                 next_cmd += 1
@@ -362,6 +566,8 @@ if __name__ == "__main__":
     load_state()
     if os.environ.get("LINEBOARD_AUTORESTART") == "1":
         threading.Thread(target=exit_when_replaced, daemon=True).start()
+    threading.Thread(target=schedule_loop, daemon=True).start()
+    threading.Thread(target=wx_worker, daemon=True).start()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"Board:  http://localhost:{PORT}/")
     print(f"Remote: http://{lan_ip()}:{PORT}/remote")

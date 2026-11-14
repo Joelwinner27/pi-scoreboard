@@ -134,6 +134,11 @@ button:disabled { opacity: .35; }
 .row input { flex: 1; min-width: 0; }
 .toggle { width: 100%; margin-top: 10px; }
 .empty { text-align: center; color: var(--lose); text-shadow: none; padding: 16px 0; }
+#days.dim { opacity: .45; }
+.seg.day { grid-auto-flow: row; grid-template-columns: 4.5em minmax(0, 1fr) minmax(0, 1.7fr); }
+.day button:first-child { color: var(--gray); text-shadow: none; opacity: 1; }
+.day.today button:first-child { color: var(--mint); text-shadow: var(--glow); }
+.toggle + .toggle { margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -198,10 +203,20 @@ button:disabled { opacity: .35; }
   <button id="bSaveTeams">SAVE</button>
 </div>
 <button class="toggle" id="bQR">SHOW QR ON TV</button>
+<button class="toggle" id="bSound">SOUND</button>
+<button class="toggle" id="bTestSound">▶ TEST SOUND ON TV</button>
+<button class="toggle" id="bNight">NIGHT DIMMING</button>
+<div class="hint" style="margin-top:4px">DIMS AT 11 PM · OFF 1 AM TO 8 AM · STAYS ON DURING LIVE GAMES</div>
+
+<h2>GAME-DAY SCHEDULE</h2>
+<button class="toggle" id="bAuto">AUTO SCHEDULE</button>
+<div class="hint" style="margin:4px 0 8px">EACH MORNING THE BOARD SWITCHES TO THAT DAY'S LEAGUE AND VIEW · TAP TO CHANGE A DAY</div>
+<div id="days"></div>
 
 <script>
 let status = {};
 let view = {};
+let settings = {};
 let league = 'cfb';
 let online = false;
 let teamsTouched = false;
@@ -218,6 +233,7 @@ const FF_TEAMS = {
   33: 'BAL', 34: 'HOU',
 };
 
+const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 
@@ -234,6 +250,7 @@ async function poll() {
     const d = await r.json();
     league = d.league || 'cfb';
     view = d.view || {};
+    settings = d.settings || {};
     // ignore a report from the other league's board while the TV is switching
     status = (d.status && (d.status.league || 'cfb') === league) ? d.status : {};
     online = d.age != null && d.age < 15 && !!status.league;
@@ -255,6 +272,20 @@ async function setView(patch) {
     render();
   } catch (e) {}
   setTimeout(poll, 1800);   // board applies it on its next check
+}
+
+async function setSettings(patch) {
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+    });
+    const d = await r.json();
+    settings = d.settings || settings;
+    view = d.view || view;
+    if (d.league && d.league !== league) { league = d.league; status = {}; }
+    render();
+  } catch (e) {}
+  setTimeout(poll, 1800);
 }
 
 async function cmd(action, id) {
@@ -361,6 +392,19 @@ function render() {
   }
   $('bQR').classList.toggle('on', !!view.showQR);
   $('bQR').textContent = view.showQR ? 'QR ON TV: ON' : 'QR ON TV: OFF';
+
+  // board-wide settings
+  const onOff = (id, label, on) => { $(id).classList.toggle('on', !!on); $(id).textContent = `${label}: ${on ? 'ON' : 'OFF'}`; };
+  onOff('bSound', 'SOUND', settings.sound);
+  onOff('bNight', 'NIGHT DIMMING', settings.night);
+  onOff('bAuto', 'AUTO SCHEDULE', settings.auto);
+  const today = (new Date(Date.now() - 5 * 3600e3).getDay() + 6) % 7;      // 0 = Monday; the board's day ends at 5 AM
+  $('days').classList.toggle('dim', !settings.auto);
+  $('days').innerHTML = (settings.days || []).map((d, i) => `<div class="seg day${i === today ? ' today' : ''}" style="margin-top:6px">
+      <button disabled>${DAY_NAMES[i]}${i === today ? ' ◀' : ''}</button>
+      <button data-day="${i}" data-k="league" class="on">${d.league.toUpperCase()}</button>
+      <button data-day="${i}" data-k="scope" class="on">${d.scope === 'today' ? "THAT DAY'S GAMES" : "WEEK'S LINES"}</button>
+    </div>`).join('');
 }
 
 function renderGames(picks) {
@@ -478,6 +522,19 @@ $('bSaveTeams').onclick = e => {
   setView({ myTeams: teams });
 };
 $('bQR').onclick = () => setView({ showQR: !view.showQR });
+$('bSound').onclick = () => setSettings({ sound: !settings.sound });
+$('bNight').onclick = () => setSettings({ night: !settings.night });
+$('bAuto').onclick  = () => setSettings({ auto: !settings.auto });
+$('bTestSound').onclick = e => { flash(e.currentTarget); cmd('sound'); };
+$('days').onclick = e => {
+  const b = e.target.closest('[data-day]');
+  if (!b || !settings.days) return;
+  const days = settings.days.map(d => ({ ...d }));
+  const d = days[+b.dataset.day];
+  if (b.dataset.k === 'league') d.league = d.league === 'cfb' ? 'nfl' : 'cfb';
+  else d.scope = d.scope === 'today' ? 'week' : 'today';
+  setSettings({ days });
+};
 
 poll();
 setInterval(poll, 2500);

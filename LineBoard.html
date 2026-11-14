@@ -163,6 +163,7 @@ footer {
   text-shadow: none;
   letter-spacing: .06em;
   white-space: nowrap;
+  column-gap: 3ch;
 }
 .f-mid   { color: var(--red); text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
 .f-right { justify-self: end; color: var(--mint); text-shadow: var(--glow); }
@@ -229,6 +230,90 @@ footer {
 #qrCode img, #qrCode canvas { width: 20vh !important; height: 20vh !important; display: block; }
 .qr-cap { font-size: 2.8vh; text-align: center; line-height: 1.1; }
 .qr-cap span { color: var(--gray); text-shadow: none; font-size: 2.3vh; text-transform: none; }
+
+/* ── RIVALRY / TROPHY TAG (a line above the teams) ── */
+.riv { grid-row: 1; grid-column: 2 / -1; font-size: var(--fs-det); line-height: 1; padding-bottom: .4vh; }
+.riv b { font-weight: normal; background: var(--mint); color: #000; text-shadow: none; padding: 0 .6ch; letter-spacing: .1em; }
+.game.has-riv .a   { grid-row: 2; }
+.game.has-riv .h   { grid-row: 3; }
+.game.has-riv .tot { grid-row: 2 / 4; }
+.game.has-riv .det { grid-row: 4; }
+
+/* ── KICKOFF WEATHER (bad weather in white) ── */
+.det .wxbad { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+
+/* ── SPLIT-FLAP: each changed character flips ── */
+.fl { display: inline-block; transform-origin: 50% 50%; }
+.fl.go { animation: flap 80ms linear; }
+@keyframes flap { 0% { transform: scaleY(1); } 50% { transform: scaleY(.05); filter: brightness(1.8); } 100% { transform: scaleY(1); } }
+
+/* ── SOUND CUE: the row it's about lights briefly ── */
+.game.ping { animation: ping 1.4s ease-out; }
+@keyframes ping { 0%, 30% { background: rgba(116, 242, 166, .22); } 100% { background: transparent; } }
+
+/* ── UPSET WATCH SCREEN ───────────── */
+#uw {
+  position: fixed; inset: 0; z-index: 44;
+  background: var(--bg);
+  display: none;
+  flex-direction: column;
+}
+#uw.open { display: flex; }
+.uw-main { flex: 1; min-height: 0; padding: 1vh 1.6vw 0; overflow: hidden; }
+.uw-head, .uw-row {
+  display: grid;
+  grid-template-columns: 6.2ch 2.2ch minmax(0, 1fr) 2.8ch 11ch 15ch;
+  column-gap: 1.4ch; align-items: center;
+  font-size: var(--fs-row); line-height: 1;
+}
+.uw-head { white-space: nowrap; color: var(--gray); text-shadow: none; letter-spacing: .1em;
+           border-bottom: 1px solid var(--div); padding-bottom: .3vh; }
+.uw-head span { font-size: var(--fs-det); }
+.uw-head span:nth-child(1) { grid-column: 1; }
+.uw-head span:nth-child(2) { grid-column: 3; }
+.uw-head span:nth-child(3) { grid-column: 5; }
+.uw-head span:nth-child(4) { grid-column: 6; }
+.uw-row { padding: .9vh 0; border-bottom: 1px solid var(--div); }
+.uw-row > span { white-space: nowrap; overflow: hidden; }
+.uw-dog { grid-row: 1 / 3; grid-column: 1; color: var(--red); text-shadow: 0 0 6px rgba(255, 92, 92, .45); font-size: 6.6vh; }
+.uw-row .rk { grid-column: 2; }
+.uw-row .nm { grid-column: 3; }
+.uw-row .sc { grid-column: 4; }
+.uw-row .d { grid-row: 1; }
+.uw-row .f { grid-row: 2; }
+.uw-row .nm.d { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.uw-st { grid-row: 1 / 3; grid-column: 5; font-size: var(--fs-det); line-height: 1.15; color: var(--gray); text-shadow: none; }
+.uw-st b { font-weight: normal; display: block; font-size: var(--fs-sec); }
+.uw-st b.lead { color: var(--red); text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
+.uw-st b.near { color: var(--mint); text-shadow: var(--glow); }
+.uw-wp { grid-row: 1 / 3; grid-column: 6; font-size: var(--fs-det); line-height: 1.2; color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.uw-bar { height: 2vh; border: 1px solid var(--mint); margin-top: .5vh; }
+.uw-bar i { display: block; height: 100%; background: var(--mint); box-shadow: 0 0 8px rgba(116, 242, 166, .5); }
+
+/* ── EXPECTED POINTS (college game screen) ── */
+.d-ep { font-size: var(--fs-sec); line-height: 1.05; }
+.d-ep b { font-weight: normal; }
+.d-ep b.pos { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.d-ep b.neg, .d-ep .down { color: var(--red); text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
+.d-ep .chg { margin-left: .8ch; }
+.d-4th { display: grid; grid-template-columns: auto auto auto; column-gap: 1.4ch; font-size: var(--fs-sec); line-height: 1.08; text-align: left; }
+.d-4th span, .d-4th b, .d-4th i { font-style: normal; font-weight: normal; color: var(--lose); text-shadow: none; }
+.d-4th b { text-align: right; }
+.d-4th .best { color: var(--white); text-shadow: 0 0 6px rgba(255, 255, 255, .35); }
+.d-4th i.best { color: var(--red); text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
+.d-last .verdict { color: var(--red); text-shadow: 0 0 6px rgba(255, 92, 92, .45); }
+
+/* ── NIGHT DIMMING ────────────────── */
+#night {
+  position: fixed; inset: 0; z-index: 95;
+  background: #000; opacity: 0; pointer-events: none;
+  transition: opacity 3s;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+#night span { font-size: var(--fs-det); color: #2d5a45; text-shadow: none; padding-bottom: 4vh; letter-spacing: .1em; opacity: 0; transition: opacity 3s; }
+body.night1 #night { opacity: .68; }
+body.night2 #night { opacity: 1; }
+body.night2 #night span { opacity: 1; }
 
 /* ── SELECTING A GAME ─────────────── */
 body.show-cursor { cursor: default; }
@@ -366,6 +451,25 @@ body.show-cursor .game:hover,
     <div class="f-right">◀ ▶ OTHER GAMES</div>
   </footer>
 </div>
+
+<!-- Upset watch: joins the page rotation while an underdog is leading or close late -->
+<div id="uw">
+  <div class="topline"></div>
+  <header>
+    <div class="h-date" id="uwCount"></div>
+    <div class="ff-title">UPSET WATCH</div>
+    <div class="h-clock" id="uwClock"></div>
+  </header>
+  <div class="uw-main" id="uwMain"></div>
+  <footer>
+    <div>UNDERDOGS LEADING, OR WITHIN ONE SCORE LATE · BIGGEST SPREAD FIRST</div>
+    <div class="f-mid" id="uwMid"></div>
+    <div class="f-right" id="uwSnd"></div>
+  </footer>
+</div>
+
+<!-- Night dimming overlay -->
+<div id="night"><span id="nightMsg"></span></div>
 
 <!-- NFL fantasy screens: FANTASY LEADERS / MY PLAYERS (picked on the phone remote) -->
 <div id="ff">
@@ -562,6 +666,7 @@ function parseGame(ev) {
       // every way ESPN names the team, for matching win-% markets
       aka:    [t.abbreviation, t.displayName, t.location, t.shortDisplayName, L.nicknames ? t.name : ''].filter(Boolean),
       nick:   t.name || '',
+      loc:    (t.location || '').toUpperCase(),      // "OHIO STATE": for the rivalry table
     };
   };
   const away = team(A), home = team(H);
@@ -585,6 +690,9 @@ function parseGame(ev) {
     period: ev.status?.period || 0,
     clock: ev.status?.displayClock || '',
     away, home, odds, broadcast,
+    venue: { city: comp.venue?.address?.city || '', state: comp.venue?.address?.state || '', indoor: !!comp.venue?.indoor },
+    espnWx: ev.weather && typeof ev.weather.temperature === 'number'
+      ? { temp: ev.weather.temperature, text: String(ev.weather.displayValue || '') } : null,
     poss: sit.possession ? String(sit.possession) : null,
     downDist: (sit.downDistanceText || sit.shortDownDistanceText || '').toUpperCase(),
     redZone: !!sit.isRedZone,
@@ -593,8 +701,111 @@ function parseGame(ev) {
     ballOn,
     spot,       // { los: 0-100 from the away goal line, offense: 'away'|'home', remembered }
     distance: Number(sit.distance) || 0,
-    lastPlay: sit.lastPlay?.text || '',
+    lastPlay: shortPlay(sit.lastPlay),          // "RUN · 4-YD GAIN"
+    lastPlayRaw: sit.lastPlay?.text || '',      // ESPN's full sentence
   };
+}
+
+/* ── LAST PLAY, SHORTENED ────────────────────────────
+   ESPN's play text is a full stat-crew sentence ("(04:24) NO HUDDLE-SHOTGUN #21
+   Z.PARKS RUSH MIDDLE FOR 4 YARDS GAIN TO THE FSU33 (#14 J.GUERRIER; ...)").
+   Boil it down to what happened: "RUN · 4-YD GAIN". Two wording styles exist
+   (short "run for 4 yds" and long "rush middle for 4 yards gain"); both are handled.
+   Anything unrecognised falls back to the original text with the clutter removed. */
+function shortPlay(lp) {
+  const raw = String(lp?.text || '').trim();
+  if (!raw) return '';
+  const type = String(lp?.type?.text || '').toUpperCase();
+  const FULL = raw.toUpperCase();
+  // scoring lines end with the extra point in brackets, "(J. SMITH KICK)": set it aside
+  const T = FULL.replace(/\s*\([^()]*(?:KICK|CONVERSION|PAT)[^()]*\)\s*$/, '').trim() || FULL;
+  const has = re => re.test(T);
+  const n = re => { const m = T.match(re); return m ? +m[1] : null; };
+  const yds = v => v + (v === 1 ? ' YD' : ' YDS');
+  const out = [];
+
+  // a flag with no play: just the foul
+  const foul = () => {
+    let m = T.match(/PENALTY\s+\S+\s+([A-Z][A-Z ,'-]*?)\s*(?:\(|\d+ YARDS?|DECLINED|OFFSETTING|$)/)
+         || T.match(/PENALTY,\s*([A-Z][A-Z ,'-]*?)\s*(?:\(|$)/);
+    const name = m ? m[1].replace(/[ ,]+$/, '').trim().slice(0, 32) : '';
+    const dist = n(/PENALTY[^.]*?(\d+) YARDS?/) ?? n(/\(-?(\d+) YARDS?\)/);
+    return ['PENALTY', name, has(/DECLINED/) ? 'DECLINED' : has(/OFFSETTING/) ? 'OFFSETTING' : dist ? yds(dist) : ''].filter(Boolean).join(' · ');
+  };
+  if (has(/PENALTY/) && (has(/NO PLAY/) || type === 'PENALTY' || has(/^(?:\(\d\d:\d\d\)\s*)?PENALTY/)) && !has(/TOUCHDOWN(?! NULLIFIED)/)) return foul();
+
+  if (has(/^\W*TIMEOUT/) || type === 'TIMEOUT') return 'TIMEOUT' + (T.match(/TIMEOUT\s+([^,]+)/) ? ' ' + T.match(/TIMEOUT\s+([^,]+)/)[1].trim() : '');
+  if (has(/^END OF /)) return T.replace(/\.$/, '');
+
+  const td = (has(/TOUCHDOWN|FOR A TD|\bTD\b|YD (?:FUMBLE|INTERCEPTION|KICKOFF|PUNT) RETURN|RETURN OF BLOCKED|\d+ YD (?:RUN|PASS FROM)/) || type.includes('TOUCHDOWN'))
+    && !has(/NULLIFIED/);
+  // yards on the play: a loss, no gain, or "for N yards"
+  const loss = n(/LOSS OF (\d+)/) ?? n(/FOR (\d+) YARDS? LOSS/);
+  const gain = loss != null ? -loss : has(/NO GAIN/) ? 0 : n(/FOR (\d+) Y(?:AR)?DS?/) ?? n(/(\d+) YD (?:RUN|PASS FROM)/);
+  const gainText = gain == null ? '' : gain === 0 ? 'NO GAIN' : `${Math.abs(gain)}-YD ${gain < 0 ? 'LOSS' : 'GAIN'}`;
+  const ret = n(/RETURNS? (?:FOR )?(\d+) Y(?:AR)?DS?/) ?? n(/(\d+) YD (?:INTERCEPTION|KICKOFF|PUNT) RETURN/);
+  const retText = ret == null ? '' : ret === 0 ? 'NO RETURN' : `${ret}-YD RETURN`;
+
+  if (/^\([^()]* KICK\)$/.test(FULL)) {
+    out.push('EXTRA POINT', 'GOOD');
+  } else if (has(/KICKOFF|ON.?SIDE KICK/)) {
+    out.push(has(/ON.?SIDE/) ? 'ONSIDE KICK' : 'KICKOFF');
+    if (has(/TOUCHBACK/)) out.push('TOUCHBACK');
+    else if (ret != null) out.push(retText);
+    else if (has(/OUT.OF.BOUNDS/)) out.push('OUT OF BOUNDS');
+    else if (has(/FAIR CATCH/)) out.push('FAIR CATCH');
+  } else if (has(/\bPUNT\b/) && !has(/PUNT RETURN$/)) {
+    const d = n(/PUNT (?:FOR )?(\d+) Y(?:AR)?DS?/);
+    out.push(has(/BLOCKED/) ? 'PUNT BLOCKED' : d ? `${d}-YD PUNT` : 'PUNT');
+    if (has(/TOUCHBACK/)) out.push('TOUCHBACK');
+    else if (has(/MUFFED/)) out.push('MUFFED');
+    else if (ret != null) out.push(retText);
+    else if (has(/FAIR CATCH/)) out.push('FAIR CATCH');
+    else if (has(/DOWNED/)) out.push('DOWNED');
+    else if (has(/OUT.OF.BOUNDS/)) out.push('OUT OF BOUNDS');
+  } else if (has(/FIELD GOAL|\bFG\b/)) {
+    const d = n(/FROM (\d+) YARDS?/) ?? n(/(\d+) YD (?:FG|FIELD GOAL)/);
+    out.push((d ? `${d}-YD ` : '') + 'FIELD GOAL', has(/BLOCKED/) ? 'BLOCKED' : has(/NO GOOD|MISSED/) ? 'NO GOOD' : 'GOOD');
+    if (has(/MISSED|NO GOOD/) && ret) out.push(retText);
+  } else if (type.startsWith('EXTRA POINT') || has(/^\(.* KICK\)$/) || (has(/KICK ATTEMPT/) && !td)) {
+    out.push('EXTRA POINT', has(/MISSED|NO GOOD|FAILED|BLOCKED/) ? 'NO GOOD' : 'GOOD');
+  } else if (has(/TWO.POINT|2.?PT|DEFENSIVE PAT/) && !td) {
+    out.push(has(/DEFENSIVE/) ? 'DEFENSIVE 2-PT RETURN' : 'TWO-POINT TRY', has(/DEFENSIVE/) ? '' : has(/FAIL|NO GOOD|INCOMPLETE|UPHELD/) ? 'FAILED' : 'GOOD');
+  } else if (has(/SAFETY/)) {
+    out.push('SAFETY');
+  } else if (has(/INTERCEPT/)) {
+    out.push('INTERCEPTED');
+    if (ret) out.push(retText);
+  } else if (has(/SACKED/)) {
+    out.push('SACK', loss ? `${loss}-YD LOSS` : '');
+  } else if (has(/PASS INCOMPLETE|INCOMPLETE/)) {
+    out.push('PASS INCOMPLETE');
+    if (has(/BROKEN UP/)) out.push('BROKEN UP');
+  } else if (has(/PASS COMPLETE|\bPASS TO\b|PASS .*CAUGHT|YD PASS FROM/) || (type.startsWith('PASS') && !has(/\bRUSH\b|\bRUN\b/))) {
+    out.push('PASS COMPLETE', gainText);
+  } else if (has(/KNEEL/)) {
+    out.push('KNEEL');
+  } else if (has(/SPIKE/)) {
+    out.push('SPIKE');
+  } else if (has(/\bRUSH\b|\bRUN\b|SCRAMBLE/) || type.startsWith('RUSH')) {
+    out.push('RUN', gainText);
+  } else if (has(/\d+ YD (?:FUMBLE|INTERCEPTION|KICKOFF|PUNT) RETURN|RETURN OF BLOCKED|\bRETURN\b/)) {
+    const d = n(/(\d+) YD/) ?? ret;
+    out.push((d ? `${d}-YD ` : '') + (has(/FUMBLE/) ? 'FUMBLE RETURN' : has(/INTERCEPTION/) ? 'INTERCEPTION RETURN' : has(/BLOCKED PUNT/) ? 'BLOCKED PUNT RETURN' : 'RETURN'));
+  } else {
+    // unknown wording: the original, minus the clock, formation, jersey numbers and tacklers
+    return T.replace(/^\(\d\d:\d\d\)\s*/, '').replace(/^(?:NO HUDDLE-?|SHOTGUN|UNDER CENTER|-)+\s*/g, '')
+            .replace(/\s*\((?:#|H:)[^)]*\)/g, '').replace(/#\d+\s*/g, '').replace(/,?\s*CLOCK \d\d:\d\d/g, '').trim();
+  }
+
+  if (has(/FUMBLE/) && !/FUMBLE/.test(out.join(' '))) {
+    out.push(type.includes('OPPONENT') || type.includes('TEAM FUMBLE RECOVERY') ? 'FUMBLE LOST' : 'FUMBLE');
+  }
+  if (has(/SAFETY/) && !out.includes('SAFETY')) out.push('SAFETY');
+  if (td) out.push('TOUCHDOWN');
+  else if (has(/1ST DOWN/) && !has(/KICKOFF|\bPUNT\b|INTERCEPT/)) out.push('1ST DOWN');
+  if (has(/PENALTY/)) out.push(has(/DECLINED/) ? 'PENALTY DECLINED' : 'PENALTY');
+  return out.filter(Boolean).slice(0, 5).join(' · ');
 }
 
 /* ── BALL SPOT FOR THE FIELD ─────────────────────────
@@ -709,6 +920,8 @@ async function refresh() {
     lastOk = Date.now();
     saveBoardCache(d);
     afterData();
+    detectEvents();
+    if (!WX.at) refreshWX();
   } catch (e) {
     // keep showing the last good data; footer flags it as delayed
     console.warn('refresh failed', e);
@@ -739,6 +952,7 @@ function loadBoardCache() {
 function afterData() {
   applyWP();
   applyView();
+  if (UW.open) { if (upsetList().length) renderUW(); else showUW(false); }
   if (detailId) { renderDetail(); loadSummary(); }
   if (view.screen !== 'games' && !ff.at) refreshFantasy();
   else renderFantasy();
@@ -758,6 +972,7 @@ function processScoreboard(d) {
 
   weekGames = all;
   provider = all.find(g => g.odds?.provider)?.odds.provider || provider;
+  Object.values(allById).forEach(updateEP);
 }
 
 /* ── VIEW FILTER ─────────────────────────────────────
@@ -909,6 +1124,8 @@ function detailHTML(g) {
 
   st = g.timeValid ? localTime(g.date) : 'TBD';
   if (mode === 'week') st = g.date.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + st;
+  const wx = wxText(g);
+  if (wx) bits.unshift(wx);
   if (g.broadcast) bits.push(esc(g.broadcast));
   return `<span class="st">${st}</span>${bits.map(b => ' · ' + b).join('')}`;
 }
@@ -932,18 +1149,20 @@ function teamCells(g, side) {
   return `
     <span class="rk ${row}">${t.rank ?? ''}</span>
     <span class="nm ${row}${mine ? ' my' : ''}${hasBall ? ' poss' : ''}">${mine ? '*' : ''}${esc(t.name)}</span>
-    <span class="sc ${row}${lost ? ' lose' : ''}">${t.score ?? ''}</span>
-    <span class="sp ${row}">${sp}</span>
-    <span class="ml ${row}">${ml}</span>`;
+    <span class="sc ${row}${lost ? ' lose' : ''}" data-k="sc${row}">${t.score ?? ''}</span>
+    <span class="sp ${row}" data-k="sp${row}">${sp}</span>
+    <span class="ml ${row}" data-k="ml${row}">${ml}</span>`;
 }
 
 function itemHTML(it) {
   if (it.type === 'sec') return `<div class="sec">${esc(it.title)}</div>`;
   const g = it.g;
-  return `<div class="game" data-id="${esc(g.id)}">
+  const riv = rivalryTag(g);
+  return `<div class="game${riv ? ' has-riv' : ''}${EV.ping[g.id] > Date.now() ? ' ping' : ''}" data-id="${esc(g.id)}">
+    ${riv ? `<span class="riv"><b>${esc(riv)}</b></span>` : ''}
     ${teamCells(g, 'away')}
     ${teamCells(g, 'home')}
-    <span class="tot">${g.odds?.total != null ? half(g.odds.total) : ''}</span>
+    <span class="tot" data-k="tot">${g.odds?.total != null ? half(g.odds.total) : ''}</span>
     <span class="det">${detailHTML(g)}</span>
   </div>`;
 }
@@ -1012,6 +1231,7 @@ function drawPage() {
       html += `<div class="col">${(pages[page][c] || []).map(itemHTML).join('')}</div>`;
     }
     board.innerHTML = html;
+    flapScan(board);
   }
   markSel();
   updateChrome();
@@ -1019,7 +1239,11 @@ function drawPage() {
 }
 
 function nextPage() {
-  if (pages.length < 2 || detailId || selId || view.paused || view.screen !== 'games') return;   // hold still while someone is picking or viewing something
+  if (detailId || selId || view.paused || view.screen !== 'games') return;   // hold still while someone is picking or viewing something
+  if (UW.open) { showUW(false); page = 0; drawPage(); return; }
+  const upsets = upsetList().length;
+  if (pages.length < 2 && !upsets) return;
+  if (page >= pages.length - 1 && upsets) { showUW(true); return; }   // after the last page
   page = (page + 1) % pages.length;
   drawPage();
 }
@@ -1042,7 +1266,12 @@ function updateChrome() {
   const live = games.filter(g => g.state === 'in').length;
   document.getElementById('fMid').textContent = stale ? '! DATA DELAYED !' : live ? `${live} LIVE` : '';
 
-  document.getElementById('fPage').textContent = pages.length > 1 ? `PAGE ${page + 1} OF ${pages.length} ▶` : '';
+  const snd = SETTINGS.sound ? '♪ ON' : '';
+  document.getElementById('fPage').textContent = [snd, pages.length > 1 ? `PAGE ${page + 1} OF ${pages.length} ▶` : ''].filter(Boolean).join(' · ');
+  document.getElementById('uwClock').textContent = localTime(now);
+  document.getElementById('uwMid').textContent = stale ? '! DATA DELAYED !' : '';
+  document.getElementById('uwSnd').textContent = snd;
+  updateNight(now);
 
   document.getElementById('dClock').textContent = localTime(now);
   document.getElementById('ffClock').textContent = localTime(now);
@@ -1100,6 +1329,13 @@ function fieldSVG(g) {
   let s = '';
 
   s += `<rect x="100" y="${top}" width="1000" height="${bot - top}" fill="rgba(116,242,166,.04)"/>`;
+
+  // expected points: tint from the ball to the goal line, brighter as EP rises, red when negative
+  if (g.ep && g.spot) {
+    const goal = g.spot.offense === 'away' ? 100 : 0, v = g.ep.val;
+    const a = Math.max(.1, Math.min(.4, Math.abs(v) / 5 * .4)).toFixed(2);
+    s += `<rect x="${fx(Math.min(g.spot.los, goal))}" y="${top}" width="${Math.abs(goal - g.spot.los) * 10}" height="${bot - top}" fill="rgba(${v >= 0 ? '116,242,166' : '255,92,92'},${a})"/>`;
+  }
 
   // end zones in team colors
   const ez = (x, t, rot) => {
@@ -1188,8 +1424,22 @@ function middlePanel(g) {
   if (g.state === 'in') {
     if (g.shortDD) s += `<div class="d-dd">${esc(g.shortDD)}</div>`;
     if (g.ballOn)  s += `<div class="d-spot">BALL ON ${esc(g.ballOn)}</div>`;
-    if (g.redZone) s += `<div class="d-rz">RED ZONE</div>`;
+    if (g.redZone && !g.ep) s += `<div class="d-rz">RED ZONE</div>`;      // the EP line takes its place (the field still shows it)
     if (!g.shortDD && g.statusName === 'STATUS_HALFTIME') s += `<div class="d-big">HALFTIME</div>`;
+    if (g.ep?.fourth) {
+      // fourth down: the three choices and what each is worth, in place of the betting lines
+      const best = g.ep.fourth.best;
+      s += `<div class="d-rule"></div><div class="d-4th">` + g.ep.fourth.opts.map(([k, label, v]) => {
+        const c = k === best ? ' class="best"' : '';
+        return `<span${c}>${label}</span><b${c}>${fmtEP(v)}</b><i${c}>${k === best ? '◀ BEST' : ''}</i>`;
+      }).join('') + `</div><div class="d-src">EXPECTED POINTS</div>`;
+      return `<div class="d-mid">${s}</div>`;
+    }
+    if (g.ep) {
+      const c = g.ep.chg;
+      s += `<div class="d-ep">EP <b class="${g.ep.val >= 0 ? 'pos' : 'neg'}">${fmtEP(g.ep.val)}</b>` +
+           (c != null && Math.abs(c) >= .05 ? `<span class="chg ${c > 0 ? 'up' : 'down'}">${c > 0 ? '▲' : '▼'} ${fmtEP(c)}</span>` : '') + `</div>`;
+    }
   } else if (g.state === 'pre') {
     s += `<div class="d-big">${g.timeValid ? localTime(g.date) : 'TBD'}</div>`;
     s += `<div class="d-spot">${g.date.toLocaleDateString('en-US', { weekday: 'long' })}</div>`;
@@ -1265,7 +1515,7 @@ function renderDetail() {
   let html = `<div class="d-teams">${teamBlock(g, 'away')}${middlePanel(g)}${teamBlock(g, 'home')}</div>`;
   if (g.state === 'in') {
     html += fieldSVG(g);
-    if (g.lastPlay) html += `<div class="d-last"><span>LAST PLAY:</span> ${esc(g.lastPlay)}</div>`;
+    if (g.lastPlay) html += `<div class="d-last"><span>LAST PLAY:</span> ${esc(g.lastPlay)}${g.verdict ? ` · <span class="verdict">${esc(g.verdict)}</span>` : ''}</div>`;
   }
   html += chart;
   html += `<div class="d-leaders">${leadersHTML(g)}</div>`;
@@ -1413,6 +1663,357 @@ function wpChartSVG(g) {
   return `<svg class="d-wp" viewBox="0 0 1200 160" font-family="VT323, monospace">${s}</svg>`;
 }
 
+/* ════════════════════════════════════════════════════
+   EXPECTED POINTS (college only for now)
+   The average value of the next score, for the team with the ball, from this
+   down, distance, field position and time left in the half. The table below
+   was built from five seasons of college play-by-play (tools/build_ep.py).
+   ════════════════════════════════════════════════════ */
+const EP = /*EP_TABLE*/{"yd":[1,2,3,4,5,6,8,10,12,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99],"dist":[1,2,3,4,5,6,7,8,9,10,12,15,20,99],"time":[30,60,120,240,99999],"base":[[[6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64,6.64],[6.37,6.37,6.37,6.37,6.37,6.37,6.37,6.37,6.37,6.37,6.37,6.37,6.37,6.37,0.45,0.45,0.45,0.45,0.45,0.45,0.45,0.45,0.45,0.45,0.45,0.45,0.45],[5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88,5.88],[5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9,5.9],[5.7,5.7,5.7,5.7,5.7,5.12,5.28,5.24,5.21,5.1,4.95,4.82,4.69,4.31,4.11,3.78,3.51,3.2,2.79,2.6,1.79,1.69,1.33,0.9,0.54,0.16,0.16],[5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5,5.5],[5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,5.33,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04,-0.04],[5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,5.17,-0.59,-0.59,-0.59,-0.59,-0.59,-0.59,-0.59,-0.59,-0.59,-0.59,-0.59],[5.02,5.02,5.02,5.02,5.02,5.02,5.02,5.02,5.02,5.02,5.02,5.02,5.02,2.81,2.81,2.81,2.81,2.81,2.81,2.22,1.77,1.12,0.96,0.47,0.47,-0.19,-0.19],[4.88,4.88,4.88,4.88,4.88,4.88,4.88,4.88,4.79,4.7,4.57,4.39,4.17,3.94,3.67,3.4,3.06,2.73,2.35,1.88,1.63,0.82,0.72,0.34,-0.05,-0.42,-0.8],[4.69,4.69,4.69,4.69,4.69,4.69,4.69,4.69,4.69,4.69,4.69,3.95,3.95,3.95,3.67,3.62,3.1,3.05,2.41,1.99,1.76,1.17,0.92,0.92,-0.52,-0.52,-0.95],[4.38,4.38,4.38,4.38,4.38,4.38,4.38,4.38,4.38,4.38,4.33,4.15,3.89,3.71,3.4,3.1,2.82,2.49,2.08,1.69,1.25,0.98,0.11,0.02,-0.37,-0.77,-0.79],[4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.04,3.81,3.64,3.3,3.0,2.67,2.42,1.92,1.72,1.17,0.63,0.53,-0.33,-0.43,-0.72,-1.22],[3.68,3.68,3.68,3.68,3.68,3.68,3.68,3.68,3.68,3.68,3.68,3.68,3.75,3.56,3.09,2.85,2.55,2.09,1.8,1.38,0.94,0.61,0.13,-0.36,-0.81,-1.16,-1.16]],[[6.24,5.25,5.22,5.31,5.22,5.21,5.23,5.12,5.12,5.06,4.98,4.83,4.64,4.46,4.23,4.02,3.71,3.36,3.15,2.77,2.29,2.13,1.66,1.19,0.95,0.95,0.24],[5.84,5.84,5.09,5.07,5.06,4.94,4.98,4.95,4.87,4.82,4.73,4.55,4.35,4.14,3.87,3.63,3.35,2.98,2.66,2.38,1.71,1.57,1.2,0.62,0.39,0.1,0.1],[5.55,5.55,5.55,4.91,4.95,4.85,4.8,4.83,4.72,4.67,4.56,4.38,4.18,3.96,3.7,3.37,3.1,2.78,2.37,2.09,1.37,1.26,0.89,0.41,0.14,-0.16,-0.16],[5.32,5.32,5.32,5.32,4.82,4.76,4.73,4.68,4.67,4.54,4.42,4.21,3.98,3.81,3.59,3.25,2.92,2.59,2.14,1.87,1.15,1.03,0.62,0.21,-0.12,-0.42,-0.42],[5.11,5.11,5.11,5.11,5.11,4.7,4.66,4.59,4.57,4.49,4.33,4.16,3.93,3.7,3.41,3.09,2.8,2.42,1.97,1.73,0.93,0.84,0.45,0.02,-0.31,-0.64,-0.64],[4.94,4.94,4.94,4.94,4.94,4.94,4.59,4.52,4.48,4.41,4.27,4.07,3.84,3.59,3.33,3.01,2.63,2.32,1.87,1.6,1.17,0.55,0.38,-0.02,-0.41,-0.87,-0.87],[4.74,4.74,4.74,4.74,4.74,4.74,4.74,4.47,4.42,4.33,4.18,3.99,3.75,3.49,3.25,2.91,2.56,2.24,1.8,1.4,1.06,0.36,0.22,-0.2,-0.57,-0.95,-1.11],[4.63,4.63,4.63,4.63,4.63,4.63,4.63,4.43,4.37,4.31,4.12,3.94,3.72,3.42,3.15,2.86,2.5,2.17,1.69,1.32,1.0,0.22,0.12,-0.33,-0.75,-1.1,-1.3],[4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.5,4.31,4.19,4.09,3.88,3.64,3.35,3.08,2.76,2.4,2.03,1.6,1.18,0.86,0.05,-0.03,-0.41,-0.78,-1.21,-1.49],[4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.4,4.23,4.12,3.95,3.76,3.5,3.25,2.93,2.61,2.23,1.88,1.46,0.95,0.71,-0.12,-0.22,-0.58,-0.98,-1.27,-1.62],[4.23,4.23,4.23,4.23,4.23,4.23,4.23,4.23,4.23,4.1,3.95,3.73,3.5,3.28,2.93,2.62,2.25,1.88,1.5,0.99,0.65,0.26,-0.43,-0.53,-1.02,-1.34,-1.72],[4.02,4.02,4.02,4.02,4.02,4.02,4.02,4.02,4.02,4.02,3.83,3.67,3.39,3.09,2.79,2.47,2.04,1.7,1.33,0.84,0.45,0.1,-0.69,-0.73,-1.22,-1.49,-1.72],[3.71,3.71,3.71,3.71,3.71,3.71,3.71,3.71,3.71,3.71,3.71,3.54,3.23,2.93,2.65,2.3,1.97,1.52,1.14,0.7,0.23,-0.15,-0.45,-1.22,-1.27,-1.65,-2.06],[3.37,3.37,3.37,3.37,3.37,3.37,3.37,3.37,3.37,3.37,3.37,3.37,3.17,2.92,2.61,2.24,1.86,1.39,0.94,0.49,-0.05,-0.46,-0.86,-1.16,-1.64,-1.92,-2.31]],[[5.76,4.56,4.55,4.54,4.46,4.47,4.46,4.47,4.4,4.32,4.23,4.08,3.92,3.68,3.38,3.14,2.87,2.47,2.2,1.86,1.29,1.14,0.63,0.27,-0.0,-0.0,-1.52],[5.21,5.21,4.28,4.24,4.21,4.16,4.21,4.12,4.12,3.99,3.92,3.73,3.49,3.3,3.04,2.71,2.4,1.95,1.7,1.34,0.63,0.56,0.15,-0.18,-0.6,-0.5,-0.5],[4.83,4.83,4.83,4.09,4.05,4.06,4.04,4.0,3.93,3.89,3.75,3.59,3.34,3.07,2.84,2.47,2.1,1.73,1.37,1.08,0.33,0.15,-0.16,-0.62,-0.87,-1.0,-1.0],[4.56,4.56,4.56,4.56,4.02,4.03,3.9,3.85,3.75,3.75,3.54,3.41,3.12,2.85,2.6,2.32,1.92,1.56,1.12,0.84,0.06,-0.04,-0.38,-0.75,-1.11,-1.34,-1.34],[4.34,4.34,4.34,4.34,4.34,3.87,3.81,3.76,3.75,3.59,3.49,3.28,3.04,2.79,2.46,2.16,1.76,1.42,0.83,0.65,-0.17,-0.22,-0.61,-0.94,-1.3,-1.62,-1.62],[4.16,4.16,4.16,4.16,4.16,4.16,3.76,3.73,3.66,3.51,3.4,3.23,2.87,2.64,2.37,2.01,1.63,1.24,0.76,0.51,0.12,-0.53,-0.64,-1.09,-1.31,-1.77,-1.77],[3.95,3.95,3.95,3.95,3.95,3.95,3.95,3.6,3.58,3.49,3.32,3.09,2.84,2.58,2.28,1.9,1.54,1.23,0.66,0.35,-0.04,-0.71,-0.78,-1.23,-1.53,-1.91,-2.12],[3.88,3.88,3.88,3.88,3.88,3.88,3.88,3.57,3.51,3.38,3.27,3.03,2.81,2.46,2.16,1.82,1.42,1.13,0.61,0.22,-0.14,-0.84,-0.92,-1.36,-1.73,-1.96,-2.13],[3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.7,3.49,3.34,3.2,2.97,2.7,2.45,2.14,1.75,1.29,0.92,0.53,0.07,-0.23,-0.97,-1.1,-1.35,-1.74,-2.08,-2.35],[3.66,3.66,3.66,3.66,3.66,3.66,3.66,3.66,3.35,3.25,3.08,2.86,2.57,2.32,1.94,1.58,1.2,0.79,0.4,-0.12,-0.4,-1.17,-1.17,-1.53,-1.89,-2.03,-2.44],[3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.5,3.25,3.08,2.82,2.61,2.33,1.95,1.6,1.22,0.77,0.38,-0.12,-0.41,-0.77,-1.44,-1.54,-1.89,-2.26,-2.37],[3.28,3.28,3.28,3.28,3.28,3.28,3.28,3.28,3.28,3.28,2.97,2.79,2.47,2.19,1.78,1.46,1.06,0.65,0.22,-0.2,-0.66,-0.93,-1.7,-1.72,-2.02,-2.31,-2.63],[2.93,2.93,2.93,2.93,2.93,2.93,2.93,2.93,2.93,2.93,2.93,2.62,2.33,1.92,1.66,1.3,0.95,0.5,0.0,-0.41,-0.86,-1.16,-1.43,-2.09,-2.19,-2.45,-2.76],[2.68,2.68,2.68,2.68,2.68,2.68,2.68,2.68,2.68,2.68,2.68,2.68,2.26,1.92,1.56,1.08,0.83,0.35,-0.06,-0.61,-0.96,-1.42,-1.7,-1.96,-2.49,-2.7,-2.9]],[[4.1,2.88,2.8,2.82,2.78,2.65,2.74,2.65,2.55,2.46,2.38,2.06,1.85,1.62,1.37,1.05,0.74,0.38,0.21,-0.12,-0.59,-0.54,-0.88,-0.96,-1.26,-1.26,-1.26],[3.37,3.37,2.8,2.66,2.61,2.58,2.54,2.5,2.36,2.27,1.99,1.77,1.44,1.18,0.98,0.64,0.38,-0.01,-0.26,-0.5,-1.08,-1.02,-1.31,-1.42,-1.78,-1.8,-1.8],[2.99,2.99,2.99,2.77,2.69,2.66,2.56,2.44,2.28,2.2,1.94,1.65,1.28,1.01,0.83,0.44,0.13,-0.09,-0.46,-0.73,-1.29,-1.25,-1.54,-1.85,-1.78,-1.9,-1.9],[2.85,2.85,2.85,2.85,2.76,2.62,2.6,2.43,2.34,2.23,1.86,1.52,1.11,0.82,0.64,0.41,-0.02,-0.38,-0.64,-0.91,-1.5,-1.45,-1.68,-1.84,-1.94,-2.15,-2.15],[2.77,2.77,2.77,2.77,2.77,2.73,2.64,2.43,2.35,2.12,1.86,1.46,1.01,0.76,0.47,0.23,-0.09,-0.4,-0.87,-0.97,-1.64,-1.62,-1.78,-2.04,-2.08,-2.32,-2.32],[2.69,2.69,2.69,2.69,2.69,2.69,2.67,2.48,2.39,2.17,1.88,1.45,0.96,0.67,0.49,0.25,-0.24,-0.45,-0.95,-1.06,-1.31,-1.84,-1.79,-2.03,-2.17,-2.33,-2.33],[2.64,2.64,2.64,2.64,2.64,2.64,2.64,2.54,2.37,2.17,1.86,1.42,0.9,0.54,0.4,0.16,-0.26,-0.5,-0.91,-1.19,-1.42,-1.94,-1.9,-2.25,-2.45,-2.51,-2.79],[2.59,2.59,2.59,2.59,2.59,2.59,2.59,2.54,2.42,2.22,1.91,1.45,0.89,0.48,0.35,0.09,-0.28,-0.51,-0.96,-1.34,-1.5,-2.06,-1.99,-2.26,-2.52,-2.65,-2.95],[2.55,2.55,2.55,2.55,2.55,2.55,2.55,2.55,2.34,2.17,1.89,1.45,0.92,0.53,0.26,0.09,-0.34,-0.73,-0.99,-1.38,-1.59,-2.1,-2.1,-2.26,-2.51,-2.68,-2.84],[2.49,2.49,2.49,2.49,2.49,2.49,2.49,2.49,2.46,2.18,1.88,1.37,0.84,0.4,0.12,-0.11,-0.46,-0.73,-1.07,-1.51,-1.68,-2.24,-2.13,-2.37,-2.58,-2.74,-2.87],[2.43,2.43,2.43,2.43,2.43,2.43,2.43,2.43,2.43,2.24,1.86,1.39,0.9,0.37,0.21,-0.09,-0.38,-0.73,-1.12,-1.55,-1.65,-1.92,-2.39,-2.35,-2.67,-2.73,-2.94],[2.25,2.25,2.25,2.25,2.25,2.25,2.25,2.25,2.25,2.25,1.91,1.44,0.86,0.32,0.1,-0.06,-0.41,-0.81,-1.15,-1.51,-1.89,-1.97,-2.54,-2.52,-2.62,-2.96,-3.03],[1.88,1.88,1.88,1.88,1.88,1.88,1.88,1.88,1.88,1.88,1.88,1.43,0.86,0.33,0.05,-0.14,-0.5,-0.93,-1.38,-1.63,-2.0,-2.22,-2.33,-2.82,-2.77,-3.0,-3.17],[1.42,1.42,1.42,1.42,1.42,1.42,1.42,1.42,1.42,1.42,1.42,1.42,0.93,0.44,0.05,-0.18,-0.58,-0.98,-1.29,-1.7,-2.07,-2.36,-2.62,-2.66,-3.01,-3.1,-3.06]]],"late":[[-1.65,-1.68,-1.65,-1.7,-1.8,-1.65,-1.69,-1.71,-1.88,-1.95,-2.0,-2.02,-1.92,-1.97,-1.86,-1.71,-1.55,-1.25,-1.03,-0.76,-0.47,-0.13,0.11,0.45,0.78,1.05,1.29],[-0.88,-1.0,-1.12,-1.12,-1.16,-1.14,-1.21,-1.22,-1.45,-1.57,-1.48,-1.48,-1.43,-1.34,-1.2,-1.07,-0.9,-0.68,-0.48,-0.27,0.03,0.34,0.53,0.99,1.04,1.39,1.31],[-0.73,-0.86,-0.96,-0.96,-0.97,-0.96,-0.99,-1.02,-1.27,-1.3,-1.31,-1.3,-1.26,-1.17,-1.1,-0.97,-0.81,-0.64,-0.39,-0.17,0.12,0.44,0.65,0.99,1.15,1.34,1.54],[-0.27,-0.32,-0.37,-0.37,-0.41,-0.44,-0.45,-0.47,-0.73,-0.74,-0.76,-0.81,-0.78,-0.79,-0.75,-0.73,-0.64,-0.56,-0.41,-0.31,-0.1,0.09,0.24,0.44,0.55,0.73,0.83]],"conv":[0.704,0.559,0.524,0.478,0.418,0.388,0.363,0.363,0.348,0.279,0.279,0.217,0.217,0.217,0.146],"fgDist":[24,29,34,39,44,49,54,59,99],"fg":[0.931,0.881,0.807,0.739,0.667,0.591,0.506,0.46,0.31],"fgMax":57,"punt":[82,82,82,82,82,82,82,82,82,82,82,82,82,82,87,87,86,84,81,76,72,67,62,57,52,47,40],"kick":0.8,"source":"cfbfastR play-by-play, 5 seasons, 1240089 rows"}/*END_EP_TABLE*/;
+
+const epBucket = (bounds, v) => { let i = 0; while (i < bounds.length - 1 && v > bounds[i]) i++; return i; };
+const fmtEP = v => { const r = Math.round(v * 10) / 10; return (r >= 0 ? '+' : '−') + Math.abs(r).toFixed(1); };   // never "−0.0"
+
+function epAt(down, togo, ytg, secs) {
+  ytg = Math.max(1, Math.min(99, Math.round(ytg)));
+  const y = epBucket(EP.yd, ytg);
+  const base = EP.base[down - 1][epBucket(EP.dist, Math.min(togo, ytg))][y];
+  const t = epBucket(EP.time, secs);
+  if (t >= EP.late.length) return base;
+  // Little time left in the half. Running out of time can cost the offense points, and it
+  // can spare a team that is backed up (the other side won't have time either) - but it
+  // never makes a drive worth more than it was, so a backed-up team rises to zero at most.
+  const adj = EP.late[t][y];
+  return adj <= 0 ? base + adj : Math.min(base + adj, Math.max(base, 0));
+}
+
+/* What each fourth-down choice is worth. Going for it: the chance of converting
+   times the value of a first down, minus the cost of handing the ball over.
+   Kicking: make chance × 3 points, minus the field position given up on a miss.
+   Punting: where the other team usually ends up starting from.               */
+function fourthDown(s) {
+  const opp = ytg => -epAt(1, 10, ytg, s.secs);                   // the other team with a first down there
+  const score = pts => pts - EP.kick;                             // points, minus what the kickoff gives back
+  const p = EP.conv[Math.min(s.togo, EP.conv.length) - 1];
+  const made = s.togo >= s.ytg ? score(7) : epAt(1, 10, s.ytg - s.togo, s.secs);
+  const opts = [['GO', 'GO', p * made + (1 - p) * opp(100 - s.ytg)]];
+  const kickYds = s.ytg + 17;
+  if (kickYds <= EP.fgMax) {
+    const pf = EP.fg[epBucket(EP.fgDist, kickYds)];
+    opts.push(['KICK', 'FG ' + kickYds, pf * score(3) + (1 - pf) * opp(Math.min(100 - s.ytg, 80))]);
+  }
+  if (s.ytg >= 35) opts.push(['PUNT', 'PUNT', opp(EP.punt[epBucket(EP.yd, s.ytg)])]);
+  opts.sort((a, b) => b[2] - a[2]);
+  return { opts, best: opts[0][0] };
+}
+
+// down, distance, yards to the goal line and seconds left in the half, from ESPN's live situation
+function epSituation(g) {
+  if (!EP || LEAGUE !== 'cfb' || g.state !== 'in' || !g.spot || g.spot.remembered) return null;
+  const m = g.shortDD.match(/^([1-4])(?:ST|ND|RD|TH) & (\d+|GOAL)/);
+  if (!m) return null;
+  const ytg = g.spot.offense === 'away' ? 100 - g.spot.los : g.spot.los;
+  if (ytg < 1 || ytg > 99) return null;
+  const c = g.clock.match(/^(\d+):(\d+)/);
+  let secs = c ? +c[1] * 60 + +c[2] : 900;
+  if (g.period === 1 || g.period === 3) secs += 900;
+  if (g.period > 4) secs = 1800;                                  // overtime has no clock
+  return { down: +m[1], togo: m[2] === 'GOAL' ? ytg : Math.min(+m[2], ytg), ytg, secs, off: g.spot.offense };
+}
+
+/* Run on every pull, for every live game: the EP now, the change since the last
+   situation we saw (same team, no score in between), the fourth-down choices,
+   and a verdict when a team went against them.                               */
+const EPM = {};
+
+function updateEP(g) {
+  g.ep = null; g.verdict = '';
+  const s = epSituation(g), memo = EPM[g.id];
+  const key = s ? [s.down, s.togo, s.ytg, s.off].join('/') : '';
+  const score = (g.away.score ?? 0) + (g.home.score ?? 0);
+
+  // the fourth down we were showing has been played: what did they do?
+  if (memo?.fourth && key !== memo.key && g.lastPlayRaw && g.lastPlayRaw !== memo.fourth.lastPlay) {
+    const f = memo.fourth, play = g.lastPlayRaw;
+    memo.fourth = null;
+    if (!/penalty|timeout/i.test(play)) {
+      const did = /punt/i.test(play) ? 'PUNT' : /field goal|\bFG\b/i.test(play) ? 'KICK' : 'GO';
+      const mine = f.opts.find(o => o[0] === did), cost = mine ? f.opts[0][2] - mine[2] : 0;
+      if (cost >= 0.5) {
+        memo.verdict = `${f.team} ${{ PUNT: 'PUNTED', KICK: 'KICKED', GO: 'WENT FOR IT' }[did]} ON ${f.dd} · COST ${cost.toFixed(1)} EP`;
+        memo.verdictUntil = Date.now() + 90e3;
+      }
+    }
+  }
+  if (memo?.verdict && Date.now() < memo.verdictUntil) g.verdict = memo.verdict;
+  if (!s) return;
+
+  const val = epAt(s.down, s.togo, s.ytg, s.secs);
+  let m = memo;
+  if (!m || m.key !== key) {
+    const same = m && m.off === s.off && m.score === score && Date.now() - m.t < 5 * 60e3;
+    m = EPM[g.id] = { key, off: s.off, score, val, chg: same ? val - m.val : null, t: Date.now(), fourth: null,
+                      verdict: m?.verdict, verdictUntil: m?.verdictUntil };
+  }
+  // late in a close game the right call depends on winning, not points, so no card then
+  const late = g.period > 4 || (g.period === 4 && s.secs < 300);
+  const fourth = s.down === 4 && !late ? fourthDown(s) : null;
+  m.fourth = fourth && { ...fourth, team: g[s.off].abbr, dd: g.shortDD, lastPlay: g.lastPlayRaw };
+  g.ep = { val, chg: m.chg, fourth };
+}
+
+/* ════════════════════════════════════════════════════
+   BOARD-WIDE SETTINGS (from server.py; switched on the phone remote)
+   Opened as a plain file there is no server, so sound and dimming stay off.
+   ════════════════════════════════════════════════════ */
+let SETTINGS = { sound: false, night: false };
+
+/* ── RIVALRY / TROPHY GAMES (college) ────────────────
+   Matched on ESPN's school names, either team home or away. */
+const RIVALRIES = Object.fromEntries([
+  ['OHIO STATE', 'MICHIGAN', 'THE GAME'], ['ALABAMA', 'AUBURN', 'IRON BOWL'],
+  ['ARMY', 'NAVY', 'ARMY-NAVY GAME'], ['OKLAHOMA', 'TEXAS', 'RED RIVER RIVALRY'],
+  ['MINNESOTA', 'WISCONSIN', "PAUL BUNYAN'S AXE"], ['WASHINGTON', 'WASHINGTON STATE', 'APPLE CUP'],
+  ['OLE MISS', 'MISSISSIPPI STATE', 'EGG BOWL'], ['CLEMSON', 'SOUTH CAROLINA', 'PALMETTO BOWL'],
+  ['GEORGIA', 'GEORGIA TECH', 'CLEAN OLD-FASHIONED HATE'], ['FLORIDA', 'FLORIDA STATE', 'SUNSHINE SHOWDOWN'],
+  ['MICHIGAN', 'MICHIGAN STATE', 'PAUL BUNYAN TROPHY'], ['INDIANA', 'PURDUE', 'OLD OAKEN BUCKET'],
+  ['IOWA', 'IOWA STATE', 'CY-HAWK TROPHY'], ['IOWA', 'MINNESOTA', 'FLOYD OF ROSEDALE'],
+  ['IOWA', 'WISCONSIN', 'HEARTLAND TROPHY'], ['IOWA', 'NEBRASKA', 'HEROES TROPHY'],
+  ['MICHIGAN', 'MINNESOTA', 'LITTLE BROWN JUG'], ['NOTRE DAME', 'USC', 'JEWELED SHILLELAGH'],
+  ['STANFORD', 'CALIFORNIA', 'THE BIG GAME'], ['USC', 'UCLA', 'VICTORY BELL'],
+  ['TEXAS', 'TEXAS A&M', 'LONE STAR SHOWDOWN'], ['KANSAS', 'KANSAS STATE', 'SUNFLOWER SHOWDOWN'],
+  ['OKLAHOMA', 'OKLAHOMA STATE', 'BEDLAM'], ['UTAH', 'BYU', 'HOLY WAR'],
+  ['ARIZONA', 'ARIZONA STATE', 'TERRITORIAL CUP'], ['ALABAMA', 'TENNESSEE', 'THIRD SATURDAY IN OCTOBER'],
+  ['AUBURN', 'GEORGIA', "DEEP SOUTH'S OLDEST RIVALRY"], ['LSU', 'ARKANSAS', 'THE GOLDEN BOOT'],
+  ['KENTUCKY', 'LOUISVILLE', "GOVERNOR'S CUP"], ['VIRGINIA', 'VIRGINIA TECH', 'COMMONWEALTH CUP'],
+  ['NORTH CAROLINA', 'DUKE', 'VICTORY BELL'], ['PITTSBURGH', 'WEST VIRGINIA', 'BACKYARD BRAWL'],
+  ['CINCINNATI', 'LOUISVILLE', 'KEG OF NAILS'], ['CINCINNATI', 'MIAMI (OH)', 'VICTORY BELL'],
+  ['OHIO STATE', 'ILLINOIS', 'ILLIBUCK'], ['ILLINOIS', 'NORTHWESTERN', 'LAND OF LINCOLN TROPHY'],
+  ['ILLINOIS', 'PURDUE', 'PURDUE CANNON'], ['PENN STATE', 'MICHIGAN STATE', 'LAND GRANT TROPHY'],
+  ['NEBRASKA', 'WISCONSIN', 'FREEDOM TROPHY'], ['MISSOURI', 'KANSAS', 'BORDER WAR'],
+  ['MISSOURI', 'ARKANSAS', 'BATTLE LINE RIVALRY'], ['ARMY', 'AIR FORCE', "COMMANDER-IN-CHIEF'S TROPHY"],
+  ['NAVY', 'AIR FORCE', "COMMANDER-IN-CHIEF'S TROPHY"], ['COLORADO', 'COLORADO STATE', 'ROCKY MOUNTAIN SHOWDOWN'],
+  ['WYOMING', 'COLORADO STATE', 'BRONZE BOOT'], ['NEVADA', 'UNLV', 'FREMONT CANNON'],
+  ['BOISE STATE', 'FRESNO STATE', 'MILK CAN'], ['SMU', 'TCU', 'IRON SKILLET'],
+  ['TOLEDO', 'BOWLING GREEN', 'BATTLE OF I-75'], ['AKRON', 'KENT STATE', 'WAGON WHEEL'],
+].map(([a, b, tag]) => [[a, b].sort().join('|'), tag]));
+
+function rivalryTag(g) {
+  return LEAGUE === 'cfb' ? RIVALRIES[[g.away.loc, g.home.loc].sort().join('|')] || '' : '';
+}
+
+/* ── KICKOFF WEATHER ─────────────────────────────────
+   Upcoming outdoor games: temperature at kickoff, plus rain / snow / wind when
+   it matters. server.py looks it up (Open-Meteo); without the server, ESPN's
+   own forecast (no wind) is used.                                           */
+const WX = { byId: {}, at: 0, timer: null, off: false };
+
+async function refreshWX() {
+  if (WX.off || !location.protocol.startsWith('http')) return;
+  WX.at = Date.now();
+  const soon = Date.now() + 9 * 864e5;
+  const list = slate.filter(g => g.state === 'pre' && g.timeValid && !g.venue.indoor && g.venue.city && g.date < soon)
+    .map(g => ({ id: g.id, city: g.venue.city, state: g.venue.state, t: Math.round(g.date / 1000) }));
+  if (!list.length) return;
+  try {
+    const r = await fetch('/api/wx', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ games: list }) });
+    if (r.status === 404) { r.body?.cancel(); WX.off = true; return; }      // older server.py, or no server
+    if (!r.ok) { r.body?.cancel(); throw new Error('HTTP ' + r.status); }
+    const d = await r.json();
+    WX.byId = { ...WX.byId, ...(d.wx || {}) };
+    if (pages.length) drawPage();
+    clearTimeout(WX.timer);
+    WX.timer = setTimeout(refreshWX, d.pending ? 20e3 : 15 * 60e3);        // still being looked up → ask again soon
+  } catch (e) {
+    console.warn('weather failed', e);
+    clearTimeout(WX.timer);
+    WX.timer = setTimeout(refreshWX, 5 * 60e3);
+  }
+}
+
+function wxText(g) {
+  if (g.state !== 'pre' || g.date - Date.now() > 7 * 864e5) return '';
+  if (g.venue.indoor) return 'DOME';
+  const w = WX.byId[g.id];
+  let temp, bad = [];
+  if (w) {
+    temp = w.temp;
+    const c = w.code, wet = w.rain == null || w.rain >= 30;
+    if (c >= 95) bad.push('STORMS');
+    else if ((c >= 71 && c <= 77) || c === 85 || c === 86) bad.push('SNOW');
+    else if (((c >= 51 && c <= 67) || (c >= 80 && c <= 82)) && wet) bad.push('RAIN');
+    if (w.wind >= 15) bad.push('WIND ' + w.wind);
+  } else if (g.espnWx) {
+    temp = g.espnWx.temp;
+    if (/snow|flurr/i.test(g.espnWx.text)) bad.push('SNOW');
+    else if (/rain|shower|storm|drizzle/i.test(g.espnWx.text)) bad.push('RAIN');
+  } else return '';
+  return `${Math.round(temp)}°` + (bad.length ? ` <span class="wxbad">${bad.join(' · ')}</span>` : '');
+}
+
+/* ── SPLIT-FLAP ──────────────────────────────────────
+   When a score or line changes, only the characters that changed flip,
+   rattling through a few others first like a departure board.           */
+const FLAP = { seen: {}, chars: '0123456789½+-' };
+
+function flapScan(board) {
+  for (const row of board.querySelectorAll('.game[data-id]')) {
+    for (const el of row.querySelectorAll('[data-k]')) {
+      const key = row.dataset.id + ':' + el.dataset.k, cur = el.textContent, old = FLAP.seen[key];
+      FLAP.seen[key] = cur;
+      if (old != null && old !== cur && cur) flapTo(el, old, cur);
+    }
+  }
+}
+
+function flapTo(el, from, to) {
+  const a = [...from], b = [...to];
+  while (a.length < b.length) a.unshift(' ');
+  while (b.length < a.length) b.unshift(' ');
+  const show = c => c === ' ' ? '&nbsp;' : esc(c);
+  el.innerHTML = a.map(c => `<span class="fl">${show(c)}</span>`).join('');
+  [...el.children].forEach((sp, i) => {
+    if (a[i] === b[i]) return;
+    let left = 4 + i * 2;                       // later characters settle later
+    const tick = () => {
+      sp.classList.remove('go'); void sp.offsetWidth; sp.classList.add('go');
+      setTimeout(() => {
+        left--;
+        sp.innerHTML = show(left > 0 ? FLAP.chars[Math.floor(Math.random() * FLAP.chars.length)] : b[i]);
+        if (left > 0) setTimeout(tick, 45);
+      }, 40);
+    };
+    setTimeout(tick, i * 30);
+  });
+}
+
+/* ── SOUND CUES ──────────────────────────────────────
+   Short square-wave beeps made in the browser (no sound files).
+   The Pi's browser is started with autoplay allowed (start-board.sh). */
+const SOUNDS = {
+  score: [[880, .09], [1175, .16]],                         // any game on the board scores
+  upset: [[660, .1], [880, .1], [1320, .22]],               // an underdog of 7+ takes the lead
+  kick:  [[523, .1], [659, .1], [784, .1], [1047, .28]],    // one of my teams kicks off
+  final: [[784, .14], [523, .3]],                           // a game ends
+};
+let audioCtx = null;
+
+function beep(notes, force) {
+  if (!force && !SETTINGS.sound) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx.resume();
+    let t = audioCtx.currentTime + .05;
+    for (const [hz, len] of notes) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = 'square'; o.frequency.value = hz;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.12, t + .01);
+      g.gain.setValueAtTime(.12, t + len - .03); g.gain.linearRampToValueAtTime(0, t + len);
+      o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t + len + .02);
+      t += len + .02;
+    }
+  } catch (e) { console.warn('sound failed', e); }
+}
+
+// which team is the underdog, and by how much (from the pregame spread)
+function underdog(g) {
+  const hs = g.odds?.hs;
+  if (hs == null || hs === 0) return null;
+  return hs > 0 ? { side: 'home', pts: hs } : { side: 'away', pts: -hs };
+}
+
+/* Compare this pull with the last one, for the games on the board: what just happened? */
+const EV = { snap: null, ping: {} };
+
+function detectEvents() {
+  const next = {}, hits = [];
+  for (const g of games) {
+    const dog = underdog(g), a = g.away.score ?? 0, h = g.home.score ?? 0;
+    const dogLead = !!dog && g.state === 'in' && (dog.side === 'away' ? a > h : h > a);
+    next[g.id] = { state: g.state, a, h, dogLead };
+    const p = EV.snap?.[g.id];
+    if (!p) continue;
+    if (p.state === 'pre' && g.state === 'in') { if (isMine(g.away) || isMine(g.home)) hits.push(['kick', g.id]); }
+    else if (p.state === 'in' && g.state === 'post') hits.push(['final', g.id]);
+    else if (g.state === 'in' && dogLead && !p.dogLead && dog.pts >= 7) hits.push(['upset', g.id]);
+    else if (g.state === 'in' && p.state === 'in' && (a > p.a || h > p.h)) hits.push(['score', g.id]);
+  }
+  EV.snap = next;
+  if (!hits.length) return;
+  for (const [, id] of hits) EV.ping[id] = Date.now() + 1400;
+  for (const id in EV.ping) if (EV.ping[id] < Date.now() - 60e3) delete EV.ping[id];
+  beep(SOUNDS[['upset', 'kick', 'final', 'score'].find(k => hits.some(x => x[0] === k))]);   // one sound per pull
+  if (pages.length) drawPage();
+}
+
+/* ── UPSET WATCH ─────────────────────────────────────
+   Live games where the underdog (3+ points) leads, or a 7+ point underdog is
+   tied or within one score in the second half. Biggest spread first.        */
+const UW = { open: false };
+
+function upsetList() {
+  return slate.map(g => {
+    const d = underdog(g);
+    if (g.state !== 'in' || !d || d.pts < 3 || g.away.score == null || g.home.score == null) return null;
+    const dog = g[d.side], fav = g[d.side === 'away' ? 'home' : 'away'];
+    const diff = dog.score - fav.score;
+    if (!(diff > 0 || (diff >= -8 && g.period >= 3 && d.pts >= 7))) return null;
+    return { g, dog, fav, diff, pts: d.pts, side: d.side };
+  }).filter(Boolean).sort((a, b) => b.pts - a.pts).slice(0, 6);
+}
+
+function liveClock(g) {
+  if (g.statusName === 'STATUS_HALFTIME') return 'HALFTIME';
+  if (g.statusName === 'STATUS_DELAYED') return 'DELAYED';
+  if (g.statusName === 'STATUS_END_PERIOD') return 'END ' + periodLabel(g.period);
+  return `${periodLabel(g.period)} ${g.clock}`;
+}
+
+function renderUW() {
+  const list = upsetList();
+  document.getElementById('uwCount').textContent =
+    (weekNum ? `WEEK ${weekNum} · ` : '') + `${list.length} GAME${list.length === 1 ? '' : 'S'}`;
+  document.getElementById('uwMain').innerHTML =
+    `<div class="uw-head"><span>DOG</span><span>GAME</span><span>STATUS</span><span>DOG WIN %</span></div>` +
+    list.map(({ g, dog, fav, diff, pts, side }) => {
+      const w = WP.byId[g.id];
+      const pct = w && w.away != null ? Math.min(99, Math.max(1, Math.round((side === 'away' ? w.away : 1 - w.away) * 100))) : null;
+      const st = diff > 0 ? `<b class="lead">LEADING</b>` : `<b class="near">${diff === 0 ? 'TIED' : 'DOWN ' + -diff}</b>`;
+      const cell = (t, cls) => `<span class="rk ${cls}">${t.rank ?? ''}</span>
+        <span class="nm ${cls}">${isMine(t) ? '*' : ''}${esc(t.name)}</span><span class="sc ${cls}">${t.score}</span>`;
+      return `<div class="uw-row">
+        <span class="uw-dog">+${half(pts)}</span>
+        ${cell(dog, 'd')}${cell(fav, 'f')}
+        <span class="uw-st">${st}${esc(liveClock(g))}</span>
+        <span class="uw-wp">${pct == null ? '' : `${esc(dog.abbr)} ${pct}%<div class="uw-bar"><i style="width:${pct}%"></i></div>`}</span>
+      </div>`;
+    }).join('');
+}
+
+function showUW(on) {
+  UW.open = on;
+  if (on) renderUW();
+  document.getElementById('uw').classList.toggle('open', on);
+}
+
+/* ── NIGHT DIMMING ───────────────────────────────────
+   Dim from 11 PM, black from 1 AM to 8 AM. Stays bright while a game on the
+   board is live, and for 10 minutes after anyone uses the remote.          */
+const NIGHT = { dimAt: 23, offAt: 1, onAt: 8, wakeUntil: 0 };
+
+function updateNight(now) {
+  let level = 0;
+  if (SETTINGS.night && Date.now() > NIGHT.wakeUntil && !games.some(g => g.state === 'in')) {
+    const h = now.getHours() + now.getMinutes() / 60;
+    const between = (a, b) => a <= b ? h >= a && h < b : h >= a || h < b;
+    level = between(NIGHT.offAt, NIGHT.onAt) ? 2 : between(NIGHT.dimAt, NIGHT.offAt) ? 1 : 0;
+  }
+  document.body.classList.toggle('night1', level === 1);
+  document.body.classList.toggle('night2', level === 2);
+  const on = new Date(now); on.setHours(NIGHT.onAt, 0, 0, 0);
+  document.getElementById('nightMsg').textContent = level === 2 ? `BOARD OFF UNTIL ${localTime(on)}` : '';
+}
+
 /* ── CONTROLS ────────────────────────────────────────
    Mouse/touch: click a game to open, click anywhere to close.
    Keyboard (or a TV remote that sends arrow keys):
@@ -1421,6 +2022,7 @@ function wpChartSVG(g) {
 let selId = null, selTimer;
 
 function stepPage(dir) {
+  if (UW.open) { showUW(false); if (dir > 0) page = 0; drawPage(); return true; }
   if (pages.length < 2) return false;
   page = (page + dir + pages.length) % pages.length;
   drawPage();
@@ -1685,6 +2287,9 @@ async function pollRemote() {
       }
     }
 
+    if (s.settings) SETTINGS = s.settings;
+    if (REMOTE.v != null && s.v !== REMOTE.v) NIGHT.wakeUntil = Date.now() + 10 * 60e3;   // someone's using the remote
+
     const cmds = s.cmds || [];
     if (REMOTE.lastCmd == null) REMOTE.lastCmd = cmds.length ? cmds[cmds.length - 1].n : 0;   // don't replay old taps
     for (const c of cmds) {
@@ -1741,6 +2346,8 @@ async function safeReload() {
 }
 
 function runCmd(c) {
+  NIGHT.wakeUntil = Date.now() + 10 * 60e3;
+  if (c.action === 'sound') { beep(SOUNDS.kick, true); return; }      // "TEST SOUND" on the remote
   if (c.action === 'open' && c.id) openGame(String(c.id));
   else if (c.action === 'close') { if (detailId) closeGame(); }
   else if (c.action === 'next' || c.action === 'prev') {

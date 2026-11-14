@@ -37,6 +37,7 @@ launch() {
     --disable-background-timer-throttling \
     --disable-backgrounding-occluded-windows \
     --disable-renderer-backgrounding \
+    --autoplay-policy=no-user-gesture-required \
     --enable-logging=stderr --log-level=0 \
     >> "$LOG" 2>&1 &
   BROWSER_PID=$!
